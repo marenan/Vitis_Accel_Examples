@@ -3,6 +3,7 @@
     "description": [
         "This is a simple example of vector addition to describe how to use HLS kernels with HBM (High Bandwidth Memory) for achieving high throughput."
     ],
+    "flow": "vitis",
     "keywords": [
         "HBM", 
         "XCL_MEM_TOPOLOGY", 
@@ -12,14 +13,22 @@
         "High Bandwidth Memory", 
         "Multiple HBM Banks"
     ], 
-    "default_device": "xilinx_u280_xdma_201920_1", 
-    "ndevice": [        
-        "xilinx_u200_xdma",
-        "xilinx_u200_qdma",
+    "ndevice": [  
+        "_u25_",
+        "u200",
         "zc",
-        "xilinx_u250_xdma",
-        "xilinx_u250_qdma",
-	"xilinx_u250_qep",
+        "vck",
+        "u250",
+        "aws",
+        "samsung"
+    ],
+    "platform_blacklist": [
+        "_u25_",
+        "u200",
+        "zc",
+        "vck",
+        "u250",
+        "aws",
         "samsung"
     ],
     "os": [
@@ -29,10 +38,11 @@
         "OpenCL"
     ], 
     "host": {
-        "host_exe": "host", 
+        "host_exe": "hbm_simple",
         "compiler": {
             "sources": [
-                "REPO_DIR/common/includes/xcl2"
+                "REPO_DIR/common/includes/xcl2/xcl2.cpp",
+                "./src/host.cpp"
             ], 
             "includepaths": [
                 "REPO_DIR/common/includes/xcl2"
@@ -79,5 +89,24 @@
             "url": "http://www.xilinx.com", 
             "group": "Xilinx"
         }
-    ] 
+    ],
+    "testinfo": {
+        "disable": false,
+        "jobs": [
+            {
+                "index": 0,
+                "dependency": [],
+                "env": "",
+                "cmd": "",
+                "max_memory_MB": 32768,
+                "max_time_min": 300
+            }
+        ],
+        "targets": [
+            "vitis_sw_emu",
+            "vitis_hw_emu",
+            "vitis_hw"
+        ],
+        "category": "canary"
+    }
 }

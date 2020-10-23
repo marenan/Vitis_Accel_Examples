@@ -3,14 +3,19 @@
     "description": [
         "This is a kernel containing the cascaded Matrix Multiplication using dataflow. ap_ctrl_chain is enabled for this kernel to showcase how multiple enqueue of Kernel calls can be overlapped to give higher performance. ap_ctrl_chain allow kernel to start processing of next kernel operation before completing the current kernel operation."
     ],
+    "flow": "vitis",
     "key_concepts": [
         "ap_ctrl_chain", 
         "PLRAM"
     ], 
-    "default_device": "xilinx_u200_qdma_201910_1", 
     "ndevice": [
-        "xilinx_u50_xdma",
         "samsung",
+        "vck",
+        "zc"
+    ], 
+    "platform_blacklist": [
+        "samsung",
+        "vck",
         "zc"
     ], 
     "os": [
@@ -25,10 +30,10 @@
                 "-pthread"
             ]
         }, 
-        "host_exe": "vadd_mmult", 
+        "host_exe": "kernel_chain",
         "compiler": {
             "sources": [
-                "REPO_DIR/common/includes/xcl2", 
+                "REPO_DIR/common/includes/xcl2/xcl2.cpp", 
                 "src/host.cpp"
             ], 
             "includepaths": [
@@ -62,5 +67,24 @@
             "url": "http://www.xilinx.com", 
             "group": "Xilinx"
         }
-    ]
+    ],
+    "testinfo": {
+        "disable": false,
+        "jobs": [
+            {
+                "index": 0,
+                "dependency": [],
+                "env": "",
+                "cmd": "",
+                "max_memory_MB": 32768,
+                "max_time_min": 300
+            }
+        ],
+        "targets": [
+            "vitis_sw_emu",
+            "vitis_hw_emu",
+            "vitis_hw"
+        ],
+        "category": "canary"
+    }
 }

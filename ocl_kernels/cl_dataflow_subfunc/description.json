@@ -1,8 +1,9 @@
 {
-    "name": "Dataflow SubFunction OpenCL(CL)", 
+    "name": "Dataflow SubFunction OpenCL (OpenCL Kernel)", 
     "description": [
         "This is simple example of vector addition to demonstrate how OpenCL Dataflow allows user to run multiple sub functions together to achieve higher throughput."
     ],
+    "flow": "vitis",
     "keywords": [
         "xcl_dataflow", 
         "xclDataflowFifoDepth"
@@ -17,10 +18,11 @@
         "OpenCL"
     ], 
     "host": {
-        "host_exe": "host", 
+        "host_exe": "cl_dataflow_subfunc",
         "compiler": {
             "sources": [
-                "REPO_DIR/common/includes/xcl2"
+                "REPO_DIR/common/includes/xcl2/xcl2.cpp",
+                "./src/host.cpp"
             ], 
             "includepaths": [
                 "REPO_DIR/common/includes/xcl2"
@@ -50,5 +52,24 @@
             "url": "http://www.xilinx.com", 
             "group": "Xilinx"
         }
-    ] 
+    ],
+    "testinfo": {
+        "disable": false,
+        "jobs": [
+            {
+                "index": 0,
+                "dependency": [],
+                "env": "",
+                "cmd": "",
+                "max_memory_MB": 32768,
+                "max_time_min": 300
+            }
+        ],
+        "targets": [
+            "vitis_sw_emu",
+            "vitis_hw_emu",
+            "vitis_hw"
+        ],
+        "category": "canary"
+    }
 }

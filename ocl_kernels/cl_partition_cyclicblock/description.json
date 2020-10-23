@@ -1,8 +1,9 @@
 {
-    "name": "Array Block and Cyclic Partitioning (CL)",
+    "name": "Array Block and Cyclic Partitioning (OpenCL Kernel)",
     "description": [
         "This example shows how to use array block and cyclic partitioning to improve performance of a kernel"
     ], 
+    "flow": "vitis",
     "keywords": [
         "xcl_array_partition", 
         "cyclic", 
@@ -15,8 +16,10 @@
         "Cyclic Partition"
     ], 
     "ndevice": [
-        "zc702_base",
-        "zc706_base"
+        "zc702"
+    ],
+    "platform_blacklist": [
+        "zc702"
     ],
     "os": [
         "Linux"
@@ -25,10 +28,11 @@
         "OpenCL"
     ], 
     "host": {
-        "host_exe": "array_partition", 
+        "host_exe": "cl_partition_cyclicblock",
         "compiler": {
             "sources": [
-                "REPO_DIR/common/includes/xcl2"
+                "REPO_DIR/common/includes/xcl2/xcl2.cpp",
+                "./src/host.cpp"
             ], 
             "includepaths": [
                 "REPO_DIR/common/includes/xcl2"
@@ -68,6 +72,23 @@
             {
                 "hw": "1"
             }
-        ]
-    } 
+        ],
+        "disable": false,
+        "jobs": [
+            {
+                "index": 0,
+                "dependency": [],
+                "env": "",
+                "cmd": "",
+                "max_memory_MB": 32768,
+                "max_time_min": 300
+            }
+        ],
+        "targets": [
+            "vitis_sw_emu",
+            "vitis_hw_emu",
+            "vitis_hw"
+        ],
+        "category": "canary"
+    }
 }

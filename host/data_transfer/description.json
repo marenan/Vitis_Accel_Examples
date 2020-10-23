@@ -3,6 +3,7 @@
     "description": [
         "This example illustrates several ways to use the OpenCL API to transfer data to and from the FPGA"
     ],
+    "flow": "vitis",
     "keywords": [
         "enqueueWriteBuffer", 
         "enqueueReadBuffer", 
@@ -25,10 +26,11 @@
         "OpenCL"
     ], 
     "host": {
-        "host_exe": "data_transfer", 
+        "host_exe": "data_transfer",
         "compiler": {
             "sources": [
-                "REPO_DIR/common/includes/xcl2"
+                "REPO_DIR/common/includes/xcl2/xcl2.cpp",
+                "./src/host.cpp"
             ], 
             "includepaths": [
                 "REPO_DIR/common/includes/xcl2"
@@ -57,5 +59,25 @@
             "url": "http://www.xilinx.com", 
             "group": "Xilinx"
         }
-    ] 
+    ],
+    "testinfo": {
+        "profile": "no",
+        "disable": false,
+        "jobs": [
+            {
+                "index": 0,
+                "dependency": [],
+                "env": "",
+                "cmd": "",
+                "max_memory_MB": 32768,
+                "max_time_min": 300
+            }
+        ],
+        "targets": [
+            "vitis_sw_emu",
+            "vitis_hw_emu",
+            "vitis_hw"
+        ],
+        "category": "canary"
+    } 
 }

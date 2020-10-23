@@ -3,6 +3,7 @@
     "description": [
         "This is simple example to describe SLR assignment information for a platform design. This example highlights how to provide extra input to assign the logic of the kernel into a nominated SLR. In this example we are assigning first kernel(Vector Multiplication) to SLR0 and assigning the second kernel(Vector Addition) to SLR1"
     ],
+    "flow": "vitis",
     "keywords": [
         "slr"
     ], 
@@ -10,9 +11,17 @@
         "SLR Assignments"
     ], 
     "ndevice": [
-        "zc", 
-	"samsung"
+        "_u25_",
+        "zc",
+        "vck", 
+        "samsung"
     ], 
+    "platform_blacklist": [
+        "_u25_",
+        "zc",
+        "vck", 
+        "samsung"
+    ],
     "os": [
         "Linux"
     ], 
@@ -20,10 +29,11 @@
         "OpenCL"
     ], 
     "host": {
-        "host_exe": "host", 
+        "host_exe": "slr_assign",
         "compiler": {
             "sources": [
-                "REPO_DIR/common/includes/xcl2"
+                "REPO_DIR/common/includes/xcl2/xcl2.cpp",
+                "./src/host.cpp"
             ], 
             "includepaths": [
                 "REPO_DIR/common/includes/xcl2"
@@ -36,7 +46,7 @@
                 {
                     "compute_units": [
                         {
-                            "slr": "SLR0"
+                            "slr": "SLR1"
                         }
                     ], 
                     "name": "vmult", 
@@ -66,5 +76,24 @@
             "url": "http://www.xilinx.com", 
             "group": "Xilinx"
         }
-    ] 
+    ],
+    "testinfo": {
+        "disable": false,
+        "jobs": [
+            {
+                "index": 0,
+                "dependency": [],
+                "env": "",
+                "cmd": "",
+                "max_memory_MB": 32768,
+                "max_time_min": 300
+            }
+        ],
+        "targets": [
+            "vitis_sw_emu",
+            "vitis_hw_emu",
+            "vitis_hw"
+        ],
+        "category": "canary"
+    }
 }

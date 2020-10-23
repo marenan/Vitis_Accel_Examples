@@ -3,6 +3,7 @@
     "description": [
         "This example shows how to use array block and cyclic partitioning to improve performance of a kernel"
     ], 
+    "flow": "vitis",
     "keywords": [
         "#pragma HLS ARRAY_PARTITION", 
         "cyclic", 
@@ -23,10 +24,11 @@
         "OpenCL"
     ], 
     "host": {
-        "host_exe": "array_partition", 
+        "host_exe": "partition_cyclicblock",
         "compiler": {
             "sources": [
-                "REPO_DIR/common/includes/xcl2"
+                "REPO_DIR/common/includes/xcl2/xcl2.cpp",
+                "./src/host.cpp"
             ], 
             "includepaths": [
                 "REPO_DIR/common/includes/xcl2"
@@ -66,6 +68,24 @@
             {
                 "hw": "1"
             }
-        ]
-    } 
+        ],
+        "profile": "no",
+        "disable": false,
+        "jobs": [
+            {
+                "index": 0,
+                "dependency": [],
+                "env": "",
+                "cmd": "",
+                "max_memory_MB": 32768,
+                "max_time_min": 300
+            }
+        ],
+        "targets": [
+            "vitis_sw_emu",
+            "vitis_hw_emu",
+            "vitis_hw"
+        ],
+        "category": "canary"
+    }
 }

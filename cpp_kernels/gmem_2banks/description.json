@@ -1,16 +1,22 @@
 {
     "ndevice": [
         "zc", 
-	"zed",
-        "xilinx_v350-es1_xdma", 
-       	"xilinx_u50_xdma",
-       	"samsung",
- 	"xilinx:u50:xdma",
- 	"xilinx:v350-es1:xdma"
+        "zed",
+        "vck",
+        "u50",
+        "samsung"
+    ], 
+    "platform_blacklist": [
+        "zc", 
+        "zed",
+        "vck",
+        "u50",
+        "samsung"
     ], 
     "description": [
         "This example of 2ddr is to demonstrate how to use multiple ddr and create buffers in each DDR."
     ], 
+    "flow": "vitis",
     "contributors": [
         {
             "url": "http://www.xilinx.com", 
@@ -19,24 +25,35 @@
     ], 
     "launch": [
         {
-            "cmd_args": "BUILD/apply_watermark.xclbin PROJECT/data/input.bmp PROJECT/data/golden.bmp", 
+            "cmd_args": "-x BUILD/apply_watermark.xclbin -i PROJECT/data/input.bmp -c PROJECT/data/golden.bmp", 
             "name": "generic launch for all flows"
         }
     ], 
     "output_files": "output.bmp", 
     "host": {
-        "host_exe": "host", 
+        "host_exe": "gmem_2banks",
         "compiler": {
             "sources": [
-                "REPO_DIR/common/includes/xcl2", 
-                "REPO_DIR/common/includes/bitmap"
+                "REPO_DIR/common/includes/xcl2/xcl2.cpp", 
+                "REPO_DIR/common/includes/cmdparser/cmdlineparser.cpp",
+                "REPO_DIR/common/includes/logger/logger.cpp",
+                "REPO_DIR/common/includes/bitmap/bitmap.cpp",
+                "./src/host.cpp"
             ], 
             "includepaths": [
-                "REPO_DIR/common/includes/xcl2", 
+                "REPO_DIR/common/includes/xcl2",
+                "REPO_DIR/common/includes/cmdparser",
+                "REPO_DIR/common/includes/logger", 
                 "REPO_DIR/common/includes/bitmap"
             ]
         }
     }, 
+    "v++": {
+        "build_datafiles" : [            
+            "PROJECT/hls_config.tcl",
+            "PROJECT/bandwidth.ini"
+        ]
+     },
     "key_concepts": [
         "Multiple Banks"
     ], 
@@ -55,7 +72,6 @@
         {
             "accelerators": [
                 {
-                    "max_memory_ports": "true", 
                     "compute_units": [
                         {
                             "arguments": [
@@ -71,11 +87,31 @@
                         }
                     ], 
                     "name": "apply_watermark", 
-                    "location": "src/apply_watermark.cpp"
+                    "location": "src/apply_watermark.cpp",
+                    "clflags": "--config PROJECT/bandwidth.ini"
                 }
             ], 
             "name": "apply_watermark"
         }
     ], 
+    "testinfo": {
+        "disable": false,
+        "jobs": [
+            {
+                "index": 0,
+                "dependency": [],
+                "env": "",
+                "cmd": "",
+                "max_memory_MB": 32768,
+                "max_time_min": 300
+            }
+        ],
+        "targets": [
+            "vitis_sw_emu",
+            "vitis_hw_emu",
+            "vitis_hw"
+        ],
+        "category": "canary"
+    },
     "name": "Global Memory Two Banks (C)"
 }

@@ -1,5 +1,5 @@
 /**********
-Copyright (c) 2018, Xilinx, Inc.
+Copyright (c) 2020, Xilinx, Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -18,41 +18,40 @@ without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **********/
 
 #define MAX_DIM 64
 
-//Tripcount identifiers
+// Tripcount identifiers
 const int c_size = MAX_DIM;
 
 extern "C" {
 void mscale(int *inout_r, const int scale, const int dim0, const int dim1) {
-#pragma HLS INTERFACE m_axi port = inout_r offset = slave bundle = gmem
-#pragma HLS INTERFACE s_axilite port = inout_r bundle = control
-#pragma HLS INTERFACE s_axilite port = scale bundle = control
-#pragma HLS INTERFACE s_axilite port = dim0 bundle = control
-#pragma HLS INTERFACE s_axilite port = dim1 bundle = control
-#pragma HLS INTERFACE s_axilite port = return bundle = control
 
-    int temp[MAX_DIM * MAX_DIM];
+  int temp[MAX_DIM * MAX_DIM];
 
+// Auto-pipeline is going to apply pipeline to these loops
 mscale:
-    for (int i = 0; i < dim0 * dim1; ++i)
-       #pragma HLS LOOP_TRIPCOUNT min=c_size_*c_size max=c_size*c_size
-       #pragma HLS PIPELINE II=1
-        temp[i] = inout_r[i] * scale;
+  for (int i = 0; i < dim0 * dim1; ++i)
+#pragma HLS LOOP_TRIPCOUNT min = c_size*c_size max = c_size*c_size
+    temp[i] = inout_r[i] * scale;
 
 mscale_write:
-    for (int i = 0; i < dim0 * dim1; ++i)
-       #pragma HLS LOOP_TRIPCOUNT min=c_size*c_size max=c_size*c_size
-       #pragma HLS PIPELINE II=1
-        inout_r[i] = temp[i];
+  for (int i = 0; i < dim0 * dim1; ++i)
+#pragma HLS LOOP_TRIPCOUNT min = c_size*c_size max = c_size*c_size
+    inout_r[i] = temp[i];
 }
 }

@@ -1,5 +1,5 @@
 /**********
-Copyright (c) 2019, Xilinx, Inc.
+Copyright (c) 2020, Xilinx, Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -32,7 +32,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **********/
-
 /*******************************************************************************
 Description:
     In this Example, a vector addition implementation is done
@@ -55,14 +54,14 @@ extern "C" {
 void adder(unsigned int *in, unsigned int *out, int inc, int size) {
 #pragma HLS INTERFACE m_axi port = in offset = slave bundle = gmem
 #pragma HLS INTERFACE m_axi port = out offset = slave bundle = gmem
-#pragma HLS INTERFACE s_axilite port = in bundle = control
-#pragma HLS INTERFACE s_axilite port = out bundle = control
-#pragma HLS INTERFACE s_axilite port = inc bundle = control
-#pragma HLS INTERFACE s_axilite port = size bundle = control
-#pragma HLS INTERFACE s_axilite port = return bundle = control
+#pragma HLS INTERFACE s_axilite port = in
+#pragma HLS INTERFACE s_axilite port = out
+#pragma HLS INTERFACE s_axilite port = inc
+#pragma HLS INTERFACE s_axilite port = size
+#pragma HLS INTERFACE s_axilite port = return
+// Auto-pipeline is going to apply pipeline to this loop
 vadd:
   for (int i = 0; i < size; i++) {
-#pragma HLS PIPELINE II = 1
     out[i] = in[i] + inc;
   }
 }

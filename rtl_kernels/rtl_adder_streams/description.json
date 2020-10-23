@@ -1,8 +1,9 @@
 {
-    "name": "Adder With Streams (RTL)",
+    "name": "Adder With Streams (RTL Kernel)",
     "description": [
         "This example shows an adder with streams using 3 RTL kernels."
     ], 
+    "flow": "vitis",
     "key_concepts": [
         "RTL Kernel", 
         "Multiple RTL Kernels"
@@ -19,10 +20,10 @@
     ], 
     "gui": false, 
     "host": {
-        "host_exe": "host", 
+        "host_exe": "rtl_adder_streams",
         "compiler": {
             "sources": [
-                "REPO_DIR/common/includes/xcl2", 
+                "REPO_DIR/common/includes/xcl2/xcl2.cpp", 
                 "src/host.cpp"
             ], 
             "includepaths": [
@@ -64,5 +65,23 @@
             "url": "http://www.xilinx.com", 
             "group": "Xilinx"
         }
-    ] 
+    ],
+    "testinfo": {
+        "disable": false,
+        "jobs": [
+            {
+                "index": 0,
+                "dependency": [],
+                "env": "",
+                "cmd": "",
+                "max_memory_MB": 32768,
+                "max_time_min": 300
+            }
+        ],
+        "targets": [
+            "vitis_hw_emu",
+            "vitis_hw"
+        ],
+        "category": "canary"
+    }
 }

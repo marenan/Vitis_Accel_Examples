@@ -5,21 +5,19 @@ import glob
 import os
 import re
 import subprocess
-import configparser
 
 #ini flags
 config_file = 0
 
-def create_params(target,data):    
+def create_params(target,data): 
+    target.write("############################## Setting up Project Variables ##############################\n")      
     target.write("# Points to top directory of Git repository\n")
-    dirName = os.getcwd()
-    dirNameList = list(dirName.split("/"))
-    dirNameIndex = dirNameList.index("Vitis_Accel_Examples")
-    diff = len(dirNameList) - dirNameIndex - 1
-    target.write("COMMON_REPO = ")
-    while diff > 0:
-        target.write("../")
-        diff -= 1 
+
+    target.write("MK_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))\n")
+    refpath = init_cur_dir.replace(cur_dir+"/","")
+    target.write("COMMON_REPO ?= ")
+    MK_PATH = 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%' + refpath+ '/*}'
+    target.write("$(shell bash -c '%s')" %MK_PATH)
     target.write("\n")
     target.write("PWD = $(shell readlink -f .)\n")
     target.write("ABS_COMMON_REPO = $(shell readlink -f $(COMMON_REPO))\n")
@@ -27,11 +25,6 @@ def create_params(target,data):
     target.write("TARGET := hw\n")
     target.write("HOST_ARCH := x86\n")
     target.write("SYSROOT := \n")
-    target.write("DEVICE = ")
-    if "default_device" in data:
-        target.write(data["default_device"] + "\n")
-    else:
-        target.write("xilinx_u200_xdma_201920_1\n")
     target.write("\n")
     target.write("include ./utils.mk\n")
     target.write("\n")
@@ -40,13 +33,20 @@ def create_params(target,data):
     target.write("BUILD_DIR := ./build_dir.$(TARGET).$(XSA)\n")
     target.write("\n")
 
-    target.write("VPP := ")
-    target.write("v++\n")
-    target.write("SDCARD := ")
-    target.write("sd_card\n")
+    target.write("# SoC variables\n")
+    target.write("RUN_APP_SCRIPT = ./run_app.sh\n")
+    target.write("PACKAGE_OUT = ./package.$(TARGET)\n")
     target.write("\n")
-    add_includes1(target, data)
-    add_includes2(target, data) 
+    target.write("LAUNCH_EMULATOR = $(PACKAGE_OUT)/launch_$(TARGET).sh\n")
+    target.write("RESULT_STRING = TEST PASSED\n")
+    target.write("\n")
+
+    target.write("VPP := v++\n")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("SDCARD := ")
+        target.write("sd_card\n")
+    target.write("\n")
+    target.write("include $(ABS_COMMON_REPO)/common/includes/opencl/opencl.mk\n")
     if "config_make" in data:
         target.write("include ")
         target.write(data["config_make"])
@@ -56,61 +56,28 @@ def create_params(target,data):
     target.write("\n")
     return
 
-#adding lib.mk
-def add_includes1(target, data):
-    target.write("#Include Libraries\n")
-    target.write("include $(ABS_COMMON_REPO)/common/includes/opencl/opencl.mk\n")
-    if "host" in data:
-        if "compiler" in data["host"]:	
-                if "includepaths" in data["host"]["compiler"]:
-                        for path in data["host"]["compiler"]["includepaths"]:
-                                target.write("include "+ path.replace("REPO_DIR","$(ABS_COMMON_REPO)"))
-                                #target.write(lib)
-                                target.write("/")
-                                target.write(path.split("/")[-1])
-                                target.write(".mk")
-                                target.write("\n")
-    return
-
-def add_includes2(target, data):
-    if "host" in data:
-        if "compiler" in data["host"]:		
-                if "includepaths" in data["host"]["compiler"]:
-                        target.write("CXXFLAGS +=")
-                        for path in data["host"]["compiler"]["includepaths"]:
-                                target.write(" $(")
-                                target.write(path.split("/")[-1])
-                                target.write("_CXXFLAGS)")
-                        target.write("\n")
-                        target.write("LDFLAGS +=")
-                        for path in data["host"]["compiler"]["includepaths"]:
-                                target.write(" $(")
-                                target.write(path.split("/")[-1])
-                                target.write("_LDFLAGS)")
-                        target.write("\n")
-                        target.write("HOST_SRCS +=")
-                        for path in data["host"]["compiler"]["includepaths"]:
-                                target.write(" $(")
-                                target.write(path.split("/")[-1])
-                                target.write("_SRCS)")
-    
-        if "linker" in data["host"]:
-                if "options" in data["host"]["linker"]:
-                        target.write("\nCXXFLAGS +=")
-                        for option in data["host"]["linker"]["options"]:
-                                target.write(" ")
-                                target.write(option)
-        target.write("\n")                
-        return
-
 def add_host_flags(target, data):
+    target.write("############################## Setting up Host Variables ##############################\n")
+    target.write("#Include Required Host Source Files\n")
+    
+
+    if "host" in data:
+        if "compiler" in data["host"]:
+            if "includepaths" in data["host"]["compiler"]:
+                for path in data["host"]["compiler"]["includepaths"]:
+                    path = path.replace('BUILD', '$(BUILD_DIR)')
+                    path = path.replace('PROJECT', '.')
+                    path = path.replace("REPO_DIR","$(ABS_COMMON_REPO)")
+                    target.write("CXXFLAGS += -I" + path + "\n")
+
     target.write("HOST_SRCS += ")
     source_flag = 0
     if "sources" in data["host"]["compiler"]:
         for src in data["host"]["compiler"]["sources"]:
-                if "src" in src.split("/"):
-                        target.write(src+ " ")
-                        source_flag+=1
+            src = src.replace('PROJECT', '.')
+            src = src.replace("REPO_DIR","$(ABS_COMMON_REPO)")
+            target.write(src + " ")
+            source_flag+=1
     if not source_flag:
         target.write("src/host.cpp\n")
     target.write("\n")
@@ -120,18 +87,31 @@ def add_host_flags(target, data):
         
     if "compiler" in data["host"]:
         if "options" in data["host"]["compiler"]:
-            target.write(data["host"]["compiler"]["options"])
+            for option in data["host"]["compiler"]["options"]:
+                target.write(" ")	
+                target.write(option)
     target.write("\n")	
     target.write("LDFLAGS += ")
     target.write("-lrt -lstdc++ ")
+    if "linker" in data["host"]:
+            if "options" in data["host"]["linker"]:
+                    target.write("\nLDFLAGS +=")
+                    for option in data["host"]["linker"]["options"]:
+                            target.write(" ")	
+                            target.write(option)
     target.write("\n\n")
     target.write("ifneq ($(HOST_ARCH), x86)\n")
     target.write("\tLDFLAGS += --sysroot=$(SYSROOT)\n")
     target.write("endif\n\n")
+
     return
 
 def add_kernel_flags(target, data):
+    target.write("############################## Setting up Kernel Variables ##############################\n")
     target.write("# Kernel compiler global settings\n")
+
+    if "v++" in data:
+        target.write("VPP_FLAGS += \n")
     target.write("CLFLAGS += ")
     target.write("-t $(TARGET) --platform $(DEVICE) --save-temps \n")   
     target.write("ifneq ($(TARGET), hw)\n")
@@ -150,7 +130,7 @@ def add_kernel_flags(target, data):
         for con in data["containers"]:
             for acc in con["accelerators"]:
                 if "clflags" in acc:
-                    target.write("CLFLAGS +=")
+                    target.write("CLFLAGS_"+acc["name"]+" += ")
                     flags = acc["clflags"].split(" ")
                     for flg in flags[0:]:
                         target.write(" ")
@@ -182,19 +162,19 @@ def add_kernel_flags(target, data):
 
     #adding config files to linker 
     if "containers" in data:
-        config_add=0
         for con in data["containers"]:
+                config_add=0
                 if "accelerators" in con:
                         for acc in con["accelerators"]:
                                 if "compute_units" in acc or "num_compute_units" in acc:
                                         if not config_add:			
                                                 target.write("\n")
                                                 target.write("# Adding config files to linker\n")
-                                                target.write("LDCLFLAGS += ")
+                                                target.write("LDCLFLAGS_"+con["name"]+" += ")
                                                 target.write("--config "+con["name"]+".ini ")
                                                 config_add=1
     target.write("\n")
-    target.write("EXECUTABLE = ")
+    target.write("EXECUTABLE = ./")
     if "host_exe" in data["host"]:
         target.write(data["host"]["host_exe"])    
     else: 
@@ -212,12 +192,45 @@ def add_kernel_flags(target, data):
     target.write("\n")
 
     target.write("EMCONFIG_DIR = $(TEMP_DIR)\n")
-    target.write("EMU_DIR = $(SDCARD)/data/emulation\n")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("EMU_DIR = $(SDCARD)/data/emulation\n")
     target.write("\n")
+
+    if "v++" in data:
+        if "compiler" in data["v++"]:
+            if "includepaths" in data["v++"]["compiler"]:
+                for path in data["v++"]["compiler"]["includepaths"]:
+                    path = path.replace('BUILD', '$(BUILD_DIR)')
+                    path = path.replace('PROJECT', '.')
+                    path = path.replace("REPO_DIR","$(ABS_COMMON_REPO)")
+                    target.write("VPP_FLAGS += -I" + path + "\n")
+                target.write("\n")
+
+    if "v++" in data:
+        if "compiler" in data["v++"]:
+            if "clflags" in data["v++"]["compiler"]:
+                clflags = data["v++"]["compiler"]["clflags"]
+                target.write("VPP_FLAGS +=")
+                for path in clflags:
+                    path = path.replace('BUILD', '$(BUILD_DIR)')
+                    path = path.replace('PROJECT', '.')
+                    path = path.replace("REPO_DIR","$(ABS_COMMON_REPO)")
+                    target.write(" " + path)
+                target.write("\n\n")
+
+    if "v++" in data:
+        if "compiler" in data["v++"]:
+            if "symbols" in data["v++"]["compiler"]:
+                target.write("VPP_FLAGS += ")
+                for symb in data["v++"]["compiler"]["symbols"]:
+                    target.write("-D" + symb + " ")
+                target.write("\n\n")
 
     return
 
 def add_containers(target, data):
+    target.write("############################## Declaring Binary Containers ##############################\n")
+
     if "containers" in data:
         for con in data["containers"]:
             target.write("BINARY_CONTAINERS += $(BUILD_DIR)/")
@@ -233,24 +246,31 @@ def add_containers(target, data):
     target.write("\n")
 
 def building_kernel(target, data):
-    target.write("# Building kernel\n")
     if "containers" in data:
+        target.write("############################## Setting Rules for Binary Containers (Building Kernels) ##############################\n")
         for con in data["containers"]:
             if "accelerators" in con:
                 for acc in con["accelerators"]:
                     target.write("$(TEMP_DIR)/")
                     target.write(acc["name"])
                     target.write(".xo: ")
-                    target.write(acc["location"])
+                    location = acc["location"]
+                    location = location.replace('PROJECT', '.')
+                    target.write(location)
                     target.write("\n")
                     target.write("\tmkdir -p $(TEMP_DIR)\n")
-                    target.write("\t$(VPP) $(CLFLAGS) --temp_dir ")
-                    target.write("$(TEMP_DIR) ")
+                    target.write("\t$(VPP) ")
+                    if "v++" in data:
+                        target.write("$(VPP_FLAGS) ")
                     target.write("-c -k ")
                     target.write(acc["name"])
+                    target.write(" $(CLFLAGS) ")
+                    if "clflags" in acc:
+                        target.write("$(CLFLAGS_"+acc["name"]+") ")
+                    target.write("--temp_dir ")
+                    target.write("$(TEMP_DIR) ")
                     target.write(" -I'$(<D)'")
                     target.write(" -o'$@' '$<'\n")
-    if "containers" in data:
         for con in data["containers"]:
             target.write("$(BUILD_DIR)/")
             target.write(con["name"])
@@ -259,10 +279,26 @@ def building_kernel(target, data):
             target.write(con["name"])
             target.write("_OBJS)\n")
             target.write("\tmkdir -p $(BUILD_DIR)\n")
-            target.write("\t$(VPP) $(CLFLAGS) --temp_dir ")
+            target.write("ifeq ($(HOST_ARCH), x86)\n")
+            target.write("\t$(VPP) ")
+            if "v++" in data:
+                target.write("$(VPP_FLAGS) ")
+            target.write("-l $(LDCLFLAGS) $(CLFLAGS) --temp_dir ")
             target.write("$(BUILD_DIR) ")
-            target.write("-l $(LDCLFLAGS)")
-            target.write(" -o'$@' $(+)\n")
+
+            if "accelerators" in con:
+                for acc in con["accelerators"]:
+                    if "compute_units" in acc or "num_compute_units" in acc:
+                        target.write(" $(LDCLFLAGS_"+con["name"]+")")
+                        break
+            target.write(" -o'$(BUILD_DIR)/" + con["name"] + ".link.xclbin' $(+)\n")
+
+            target.write("\t$(VPP) -p $(BUILD_DIR)/" + con["name"] + ".link.xclbin -t $(TARGET) --platform $(DEVICE) ")
+            target.write("--package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/" + con["name"] + ".xclbin\n")
+            target.write("else\n")
+            target.write("\t$(VPP) -l $(LDCLFLAGS) $(CLFLAGS) --temp_dir $(BUILD_DIR) ")
+            target.write("-o'$(BUILD_DIR)/" + con["name"] + ".xclbin' $(+)\n")
+            target.write("endif\n")
     target.write("\n")
     return
 
@@ -277,16 +313,32 @@ def building_kernel_rtl(target, data):
             target.write(con["name"])
             target.write("_OBJS)\n")
             target.write("\tmkdir -p $(BUILD_DIR)\n")
-            target.write("\t$(VPP) $(CLFLAGS) --temp_dir ")
+            target.write("ifeq ($(HOST_ARCH), x86)\n")
+            target.write("\t$(VPP) ")
+            if "v++" in data:
+                target.write("$(VPP_FLAGS) ")
+            target.write("-l $(LDCLFLAGS) $(CLFLAGS) --temp_dir ")
             target.write("$(BUILD_DIR) ")
-            target.write("-l $(LDCLFLAGS)")
-            target.write(" -o'$@' $(+)\n\n")
+
+            if "accelerators" in con:
+                for acc in con["accelerators"]:
+                    if "compute_units" in acc or "num_compute_units" in acc:
+                        target.write(" $(LDCLFLAGS_"+con["name"]+")")
+            target.write(" -o'$(BUILD_DIR)/" + con["name"] + ".link.xclbin' $(+)\n")
+
+            target.write("\t$(VPP) -p $(BUILD_DIR)/" + con["name"] + ".link.xclbin -t $(TARGET) --platform $(DEVICE) ")
+            target.write("--package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/" + con["name"] + ".xclbin\n")
+            target.write("else\n")
+            target.write("\t$(VPP) -l $(LDCLFLAGS) $(CLFLAGS) --temp_dir $(BUILD_DIR) ")
+            target.write("-o'$(BUILD_DIR)/" + con["name"] + ".xclbin' $(+)\n")
+            target.write("endif\n")
     return
 
 def building_host(target, data):
-    target.write("# Building Host\n")
-    target.write("$(EXECUTABLE): check-xrt $(HOST_SRCS) $(HOST_HDRS)\n")
-    target.write("\t$(CXX) $(CXXFLAGS) $(HOST_SRCS) $(HOST_HDRS) -o '$@' $(LDFLAGS)\n")
+    target.write("############################## Setting Rules for Host (Building Host Executable) ##############################\n")
+
+    target.write("$(EXECUTABLE): $(HOST_SRCS) | check-xrt\n")
+    target.write("\t	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)\n")
     target.write("\n")
     target.write("emconfig:$(EMCONFIG_DIR)/emconfig.json\n")
     target.write("$(EMCONFIG_DIR)/emconfig.json:\n")
@@ -304,6 +356,8 @@ def profile_report(target):
     return
 
 def mk_clean(target, data):
+    target.write("############################## Cleaning Rules ##############################\n")
+
     target.write("# Cleaning stuff\n")
     target.write("clean:\n")
     target.write("\t-$(RMDIR) $(EXECUTABLE) $(XCLBIN)/{*sw_emu*,*hw_emu*} \n")
@@ -312,8 +366,12 @@ def mk_clean(target, data):
     target.write("\n")
 
     target.write("cleanall: clean\n")
-    target.write("\t-$(RMDIR) build_dir* sd_card*\n")
-    target.write("\t-$(RMDIR) _x.* *xclbin.run_summary qemu-memory-_* emulation/ _vimage/ pl* start_simulation.sh *.xclbin\n")
+    target.write("\t-$(RMDIR) build_dir*")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write(" sd_card*")
+    target.write("\n")
+    target.write("\t-$(RMDIR) package.*\n")
+    target.write("\t-$(RMDIR) _x* *xclbin.run_summary qemu-memory-_* emulation _vimage pl* start_simulation.sh *.xclbin\n")
     if "output_files" in data:         
         target.write("\t-$(RMDIR) ")
         args = data["output_files"].split(" ")
@@ -326,6 +384,7 @@ def mk_clean(target, data):
     return
 
 def mk_build_all(target, data):
+    target.write("############################## Setting Targets ##############################\n")
     target.write("CP = cp -rf\n")
 
     args = []
@@ -338,15 +397,21 @@ def mk_build_all(target, data):
     target.write("\n")
 
     target.write(".PHONY: all clean cleanall docs emconfig\n")
-    target.write("all: check-devices $(EXECUTABLE) $(BINARY_CONTAINERS) emconfig sd_card\n")
-    target.write("\n")
+    target.write("all: check-devices $(EXECUTABLE) $(BINARY_CONTAINERS) emconfig")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write(" sd_card")
+    target.write("\n\n")
     
-    target.write(".PHONY: exe\n")
-    target.write("exe: $(EXECUTABLE)\n")
+    target.write(".PHONY: host\n")
+    target.write("host: $(EXECUTABLE)\n")
     target.write("\n")
     
     target.write(".PHONY: build\n")
-    target.write("build: $(BINARY_CONTAINERS)\n")
+    target.write("build: check-vitis $(BINARY_CONTAINERS)\n")
+    target.write("\n")
+
+    target.write(".PHONY: xclbin\n")
+    target.write("xclbin: build\n")
     target.write("\n")
     
     counter = 0
@@ -364,10 +429,25 @@ def mk_build_all(target, data):
     building_host(target, data)
     return
 
-def mk_check(target, data):
-    target.write("check: all\n")
-    if "ndevice" in data:
-        for board in data["ndevice"]:
+def deprecated_check(target, data):
+    target.write("############################## Deprecated Checks and Running Rules ##############################\n")
+
+    target.write("check:\n")
+    target.write("\t$(ECHO) \"WARNING: \\\"make check\\\" is a deprecated command. Please use \\\"make run\\\" instead\"\n")
+    target.write("\tmake run\n")
+    target.write("\n")
+
+    target.write("exe:\n")
+    target.write("\t$(ECHO) \"WARNING: \\\"make exe\\\" is a deprecated command. Please use \\\"make host\\\" instead\"\n")
+    target.write("\tmake host\n")
+    target.write("\n")
+
+def mk_run(target, data):
+    target.write("############################## Setting Essential Checks and Running Rules ##############################\n")
+
+    target.write("run: all\n")
+    if "platform_blacklist" in data:
+        for board in data["platform_blacklist"]:
             target.write("ifeq ($(findstring ")
             target.write(board)
             target.write(", $(DEVICE)), ")
@@ -377,9 +457,10 @@ def mk_check(target, data):
             target.write("endif\n")
         target.write("\n")
     target.write("ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))\n")
-    target.write("ifeq ($(HOST_ARCH), x86)\n")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("ifeq ($(HOST_ARCH), x86)\n")
     target.write("\t$(CP) $(EMCONFIG_DIR)/emconfig.json .\n") 
-    target.write("\tXCL_EMULATION_MODE=$(TARGET) ./$(EXECUTABLE)")
+    target.write("\tXCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE)")
     
     if "launch" in data:	
         if "cmd_args" in data["launch"][0]:
@@ -389,19 +470,19 @@ def mk_check(target, data):
                 arg = arg.replace('BUILD', '$(BUILD_DIR)')
                 arg = arg.replace('PROJECT', '.')
                 target.write(arg)
-    target.write("\nelse\n")
-    target.write("\tmkdir -p $(EMU_DIR)\n")
-    target.write("\t$(CP) $(XILINX_VITIS)/data/emulation/unified $(EMU_DIR)\n")
-    target.write("\tmkfatimg $(SDCARD) $(SDCARD).img 500000\n")
-    target.write("\tlaunch_emulator -no-reboot -runtime ocl -t $(TARGET) -sd-card-image $(SDCARD).img -device-family $(DEV_FAM)")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("\nelse\n")
+        target.write("\t$(ABS_COMMON_REPO)/common/utility/run_emulation.pl \"${LAUNCH_EMULATOR} | tee run_app.log\" \"${RUN_APP_SCRIPT} $(TARGET)\" \"${RESULT_STRING}\" \"7\"")
     if "containers" in data:
         target.write("\n")
     else:
         target.write(" -ps-only\n")
-    target.write("endif\n")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("endif\n")
     target.write("else\n")
-    target.write("ifeq ($(HOST_ARCH), x86)\n")
-    target.write("\t./$(EXECUTABLE)")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("ifeq ($(HOST_ARCH), x86)\n")
+    target.write("\t$(EXECUTABLE)")
 	
     if "launch" in data:
         if "cmd_args" in data["launch"][0]:
@@ -411,8 +492,85 @@ def mk_check(target, data):
                 arg = arg.replace('BUILD', '$(BUILD_DIR)')
                 arg = arg.replace('PROJECT', '.')
                 target.write(arg)
+    if "post_launch" in data:
+        for post_launch in data["post_launch"]:
+            if "launch_cmd" in post_launch:
+                target.write("\n")
+                args = post_launch["launch_cmd"]
+                args = args.replace('BUILD', '$(BUILD_DIR)')
+                args = args.replace("REPO_DIR","$(ABS_COMMON_REPO)")
+                args = args.replace('HOST_EXE', '$(EXE_FILE)')
+                target.write("\t" + args)
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("\nendif")
     target.write("\nendif\n")
-    target.write("endif\n")
+    if "targets" in data:
+        target.write("ifneq ($(TARGET),$(findstring $(TARGET),")
+        args = data["targets"]
+        for arg in args:
+            target.write(" ")
+            target.write(arg)
+        target.write("))\n")
+        target.write("$(warning WARNING:Application supports only")
+        for arg in args:
+            target.write(" ")
+            target.write(arg)
+        target.write(" TARGET. Please use the target for running the application)\n")
+        target.write("endif\n")
+
+    target.write("\n\n")
+    
+    target.write(".PHONY: test\n")
+    target.write("test: $(EXECUTABLE)\n")
+    target.write("ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))\n")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("ifeq ($(HOST_ARCH), x86)\n")
+    target.write("\tXCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE)")
+    
+    if "launch" in data:	
+        if "cmd_args" in data["launch"][0]:
+            args = data["launch"][0]["cmd_args"].split(" ")    
+            for arg in args[0:]:
+                target.write(" ")
+                arg = arg.replace('BUILD', '$(BUILD_DIR)')
+                arg = arg.replace('PROJECT', '.')
+                target.write(arg)
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("\nelse\n")
+        target.write("\t$(ABS_COMMON_REPO)/common/utility/run_emulation.pl \"${LAUNCH_EMULATOR} | tee embedded_run.log\" \"${RUN_APP_SCRIPT} $(TARGET)\" \"${RESULT_STRING}\" \"7\"")
+    if "containers" in data:
+        target.write("\n")
+    else:
+        target.write(" -ps-only\n")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("endif\n")
+    target.write("else\n")
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("ifeq ($(HOST_ARCH), x86)\n")
+    target.write("\t$(EXECUTABLE)")
+	
+    if "launch" in data:
+        if "cmd_args" in data["launch"][0]:
+            args = data["launch"][0]["cmd_args"].split(" ")    
+            for arg in args[0:]:
+                target.write(" ")
+                arg = arg.replace('BUILD', '$(BUILD_DIR)')
+                arg = arg.replace('PROJECT', '.')
+                target.write(arg)
+    if "post_launch" in data:
+        for post_launch in data["post_launch"]:
+            if "launch_cmd" in post_launch:
+                target.write("\n")
+                args = post_launch["launch_cmd"]
+                args = args.replace('BUILD', '$(BUILD_DIR)')
+                args = args.replace("REPO_DIR","$(ABS_COMMON_REPO)")
+                args = args.replace('HOST_EXE', '$(EXE_FILE)')
+                target.write("\t" + args)
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("\nelse\n")
+        target.write("\t$(ECHO) \"Please copy the content of sd_card folder and data to an SD Card and run on the board\"")
+        target.write("\nendif")
+    target.write("\nendif\n")
     if "targets" in data:
         target.write("ifneq ($(TARGET),$(findstring $(TARGET),")
         args = data["targets"]
@@ -427,53 +585,34 @@ def mk_check(target, data):
         target.write(" TARGET. Please use the target for running the application)\n")
         target.write("endif\n")
         target.write("\n")
-    
+    target.write("\n\n")
 
-    ini_check = 0
-    for dirs,subdirs,files in os.walk("."):
-        if "xrt.ini" in files:
-                ini_check = 1
-    if ini_check == 1:
-        Config = configparser.ConfigParser()
-        Config.read("xrt.ini")
-        sections = Config.sections()
-        if 'Debug' in sections:
-                dict_debug = {}
-                options = Config.options('Debug')
-                if 'profile' in options:
-                        dict_debug['profile'] = Config.get('Debug', 'profile')
-                        if dict_debug['profile'] == 'true':	
-                                target.write("ifeq ($(HOST_ARCH), x86)\n")
-                                target.write("\tperf_analyze profile -i profile_summary.csv -f html\n")
-                                target.write("endif\n")
-    else:
-        print("xrt.ini config file not found")		
-    target.write("\n")
-
-
-    target.write("sd_card: $(EXECUTABLE) $(BINARY_CONTAINERS) emconfig\n")
+def mk_sdcard(target, data):
+    target.write("############################## Preparing sdcard ##############################\n")
+    target.write("sd_card: $(BINARY_CONTAINERS) $(EXECUTABLE) gen_run_app\n")
+    extra_file_list = []
+    if "launch" in data:	
+        if "cmd_args" in data["launch"][0]:
+            args = data["launch"][0]["cmd_args"].split(" ")    
+            for arg in args:
+                if "xclbin" not in arg:
+                    arg = arg.replace('BUILD', '$(BUILD_DIR)')
+                    arg = arg.replace('PROJECT', '.')
+                    extra_file_list.append(arg)  
     target.write("ifneq ($(HOST_ARCH), x86)\n")
-    target.write("\tmkdir -p $(SDCARD)/$(BUILD_DIR)\n")
-    target.write("\t$(CP) $(B_NAME)/sw/$(XSA)/boot/generic.readme $(B_NAME)/sw/$(XSA)/xrt/image/* xrt.ini $(EXECUTABLE) $(SDCARD)\n")
     if "containers" in data:
-        target.write("\t$(CP) $(BUILD_DIR)/*.xclbin $(SDCARD)/$(BUILD_DIR)/\n")
-    
-    if os.path.exists("data"):
-        target.write("\t$(CP) data $(SDCARD)\n")
-
-    target.write("ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))\n")
-    
-    target.write("\t$(ECHO) 'cd /mnt/' >> $(SDCARD)/init.sh\n")
-    target.write("\t$(ECHO) 'export XILINX_VITIS=$$PWD' >> $(SDCARD)/init.sh\n")
-    target.write("\t$(ECHO) 'export XCL_EMULATION_MODE=$(TARGET)' >> $(SDCARD)/init.sh\n")
-    target.write("\t$(ECHO) './$(EXECUTABLE) $(CMD_ARGS)' >> $(SDCARD)/init.sh\n")
-    target.write("\t$(ECHO) 'reboot' >> $(SDCARD)/init.sh\n")
-    
-    target.write("else\n")
-    if "containers" in data:
-        target.write("\t[ -f $(SDCARD)/BOOT.BIN ] && echo \"INFO: BOOT.BIN already exists\" || $(CP) $(BUILD_DIR)/sd_card/BOOT.BIN $(SDCARD)/\n")
-    target.write("\t$(ECHO) './$(EXECUTABLE) $(CMD_ARGS)' >> $(SDCARD)/init.sh\n")
-    target.write("endif\n")
+        for con in data["containers"]:
+            target.write("\t$(VPP) -p $(BUILD_DIR)/")
+            target.write(con["name"])
+            target.write(".xclbin -t $(TARGET) --platform $(DEVICE) ")
+            target.write("--package.out_dir $(PACKAGE_OUT) --package.rootfs $(EDGE_COMMON_SW)/rootfs.ext4 --package.sd_file $(SD_IMAGE_FILE) --package.sd_file xrt.ini --package.sd_file $(RUN_APP_SCRIPT) --package.sd_file $(EXECUTABLE)")
+            for extra_filename in extra_file_list:
+                if ('-' not in extra_filename):
+                    target.write(" --package.sd_file ")
+                    target.write(extra_filename)
+            target.write(" -o ")
+            target.write(con["name"])
+            target.write(".xclbin\n")
     target.write("endif\n")
     target.write("\n")
 
@@ -490,13 +629,15 @@ def aws_build(target):
     target.write("\t$(COMMON_REPO)/common/utility/aws/run_aws.py $(BINARY_CONTAINERS)\n\n")
 
 def mk_help(target):
+    target.write("############################## Help Section ##############################\n")   
+
     target.write(".PHONY: help\n")
     target.write("\n")
     target.write("help::\n")
     target.write("\t$(ECHO) \"Makefile Usage:\"\n")
-    target.write("\t$(ECHO) \"  make all TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> SYSROOT=<sysroot_path>\"\n");
+    target.write("\t$(ECHO) \"  make all TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>\"\n");
     target.write("\t$(ECHO) \"      Command to generate the design for specified Target and Shell.\"\n")
-    target.write("\t$(ECHO) \"      By default, HOST_ARCH=x86. HOST_ARCH and SYSROOT is required for SoC shells\"\n")
+    target.write("\t$(ECHO) \"      By default, HOST_ARCH=x86. HOST_ARCH and EDGE_COMMON_SW is required for SoC shells\"\n")
     target.write("\t$(ECHO) \"\"\n")
     target.write("\t$(ECHO) \"  make clean \"\n");
     target.write("\t$(ECHO) \"      Command to remove the generated non-hardware files.\"\n")
@@ -504,17 +645,26 @@ def mk_help(target):
     target.write("\t$(ECHO) \"  make cleanall\"\n")
     target.write("\t$(ECHO) \"      Command to remove all the generated files.\"\n")
     target.write("\t$(ECHO) \"\"\n")
-    target.write("\t$(ECHO) \"  make sd_card TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> SYSROOT=<sysroot_path>\"\n");
-    target.write("\t$(ECHO) \"      Command to prepare sd_card files.\"\n")
-    target.write("\t$(ECHO) \"      By default, HOST_ARCH=x86. HOST_ARCH and SYSROOT is required for SoC shells\"\n")
-    target.write("\t$(ECHO) \"\"\n")
-    target.write("\t$(ECHO) \"  make check TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> SYSROOT=<sysroot_path>\"\n");
+    target.write("\t$(ECHO)  \"  make test DEVICE=<FPGA platform>\"\n")    
+    target.write("\t$(ECHO)  \"     Command to run the application. This is same as 'run' target but does not have any makefile dependency.\"\n")  
+    target.write("\t$(ECHO)  \"\"\n")
+
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("\t$(ECHO) \"  make sd_card TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>\"\n");
+        target.write("\t$(ECHO) \"      Command to prepare sd_card files.\"\n")
+        target.write("\t$(ECHO) \"      By default, HOST_ARCH=x86. HOST_ARCH and EDGE_COMMON_SW is required for SoC shells\"\n")
+        target.write("\t$(ECHO) \"\"\n")
+    target.write("\t$(ECHO) \"  make run TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>\"\n");
     target.write("\t$(ECHO) \"      Command to run application in emulation.\"\n")
-    target.write("\t$(ECHO) \"      By default, HOST_ARCH=x86. HOST_ARCH and SYSROOT is required for SoC shells\"\n")
+    target.write("\t$(ECHO) \"      By default, HOST_ARCH=x86. HOST_ARCH and EDGE_COMMON_SW is required for SoC shells\"\n")
     target.write("\t$(ECHO) \"\"\n")
-    target.write("\t$(ECHO) \"  make build TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> SYSROOT=<sysroot_path>\"\n");
+    target.write("\t$(ECHO) \"  make build TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>\"\n");
     target.write("\t$(ECHO) \"      Command to build xclbin application.\"\n")
-    target.write("\t$(ECHO) \"      By default, HOST_ARCH=x86. HOST_ARCH and SYSROOT is required for SoC shells\"\n")
+    target.write("\t$(ECHO) \"      By default, HOST_ARCH=x86. HOST_ARCH and EDGE_COMMON_SW is required for SoC shells\"\n")
+    target.write("\t$(ECHO) \"\"\n")
+    target.write("\t$(ECHO) \"  make host HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>\"\n");
+    target.write("\t$(ECHO) \"      Command to build host application.\"\n")
+    target.write("\t$(ECHO) \"      By default, HOST_ARCH=x86. HOST_ARCH and EDGE_COMMON_SW is required for SoC shells\"\n")
     target.write("\t$(ECHO) \"\"\n")
     #target.write("\t$(ECHO) \"  make run_nimbix DEVICE=<FPGA platform>\"\n");
     #target.write("\t$(ECHO) \"      Command to run application on Nimbix Cloud.\"\n")
@@ -567,8 +717,9 @@ def util_checks(target):
     target.write("\n")
 
     target.write("#Checks for XILINX_VITIS\n")
+    target.write("check-vitis:\n")
     target.write("ifndef XILINX_VITIS\n")
-    target.write("$(error XILINX_VITIS variable is not set, please set correctly and rerun)\n")
+    target.write("\t$(error XILINX_VITIS variable is not set, please set correctly and rerun)\n")
     target.write("endif\n")
     target.write("\n")
 
@@ -582,8 +733,14 @@ def util_checks(target):
 
     target.write("#Checks for XILINX_XRT\n")
     target.write("check-xrt:\n")
+    target.write("ifeq ($(HOST_ARCH), x86)\n")
     target.write("ifndef XILINX_XRT\n")
     target.write("\t$(error XILINX_XRT variable is not set, please set correctly and rerun)\n")
+    target.write("endif\n")
+    target.write("else\n")
+    target.write("ifndef XILINX_VITIS\n")
+    target.write("\t$(error XILINX_VITIS variable is not set, please set correctly and rerun)\n")
+    target.write("endif\n")
     target.write("endif\n")
     target.write("\n")
 
@@ -593,30 +750,47 @@ def util_checks(target):
     target.write("endif\n")
     target.write("\n")
     
-
-
-    target.write("#Checks for SYSROOT\n")
+    target.write("#Checks for EDGE_COMMON_SW\n")
     target.write("ifneq ($(HOST_ARCH), x86)\n")
-    target.write("ifndef SYSROOT\n")
-    target.write("$(error SYSROOT variable is not set, please set correctly and rerun)\n")
+    target.write("ifndef EDGE_COMMON_SW\n")
+    target.write("$(error EDGE_COMMON_SW variable is not set, please set correctly and rerun)\n")
     target.write("endif\n")
-    target.write("endif\n")
-    target.write("\n")
-
-    target.write("#Checks for g++\n")
-    target.write("ifeq ($(HOST_ARCH), x86)\n")
-    target.write("ifneq ($(shell expr $(shell g++ -dumpversion) \>= 5), 1)\n")
-    target.write("ifndef XILINX_VIVADO\n")
-    target.write("$(error [ERROR]: g++ version older. Please use 5.0 or above.)\n")
-    target.write("else\n")
-    target.write("CXX := $(XILINX_VIVADO)/tps/lnx64/gcc-6.2.0/bin/g++\n")
-    target.write("$(warning [WARNING]: g++ version older. Using g++ provided by the tool : $(CXX))\n")
-    target.write("endif\nendif\n")
-    target.write("else ifeq ($(HOST_ARCH), aarch64)\n")
+    target.write("ifeq ($(HOST_ARCH), aarch64)\n")
+    target.write("SYSROOT := $(EDGE_COMMON_SW)/sysroots/aarch64-xilinx-linux\n")
+    target.write("SD_IMAGE_FILE := $(EDGE_COMMON_SW)/Image\n")
     target.write("CXX := $(XILINX_VITIS)/gnu/aarch64/lin/aarch64-linux/bin/aarch64-linux-gnu-g++\n")
     target.write("else ifeq ($(HOST_ARCH), aarch32)\n")
+    target.write("SYSROOT := $(EDGE_COMMON_SW)/sysroots/cortexa9t2hf-neon-xilinx-linux-gnueabi/\n")
+    target.write("SD_IMAGE_FILE := $(EDGE_COMMON_SW)/uImage\n")
     target.write("CXX := $(XILINX_VITIS)/gnu/aarch32/lin/gcc-arm-linux-gnueabi/bin/arm-linux-gnueabihf-g++\n")
+    target.write("endif\n")
     target.write("endif\n\n")
+
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        target.write("gen_run_app:\n")
+        target.write("ifneq ($(HOST_ARCH), x86)\n")
+        target.write("\trm -rf run_app.sh\n")
+        target.write("\t$(ECHO) 'export LD_LIBRARY_PATH=/mnt:/tmp:$(LD_LIBRARY_PATH)' >> run_app.sh\n")
+        target.write("\t$(ECHO) 'export XILINX_XRT=/usr' >> run_app.sh\n")
+        target.write("ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))\n")
+        target.write("\t$(ECHO) 'export XILINX_VITIS=/mnt' >> run_app.sh\n")
+        target.write("\t$(ECHO) 'export XCL_EMULATION_MODE=$(TARGET)' >> run_app.sh\n")
+        target.write("endif\n")
+        target.write("\t$(ECHO) '$(EXECUTABLE)")
+        if "launch" in data:	
+            if "cmd_args" in data["launch"][0]:
+                args = data["launch"][0]["cmd_args"].split(" ")    
+                for arg in args:
+                    arg_name = arg.split("/") 
+                    target.write(" ")
+                    target.write(arg_name[-1])
+        target.write("' >> run_app.sh\n")
+        target.write("\t$(ECHO) 'return_code=$$?' >> run_app.sh\n")
+        target.write("\t$(ECHO) 'if [ $$return_code -ne 0 ]; then' >> run_app.sh\n")
+        target.write("\t$(ECHO) 'echo \"ERROR: host run failed, RC=$$return_code\"' >> run_app.sh\n")
+        target.write("\t$(ECHO) 'fi' >> run_app.sh\n")
+        target.write("\t$(ECHO) 'echo \"INFO: host run completed.\"' >> run_app.sh\n")
+        target.write("endif\n")
     
     target.write("check-devices:\n")
     target.write("ifndef DEVICE\n")
@@ -647,7 +821,9 @@ def create_mk(target, data):
     add_kernel_flags(target, data)
     add_containers(target, data)
     mk_build_all(target, data)
-    mk_check(target, data)
+    mk_run(target, data)
+    if not ("platform_type" in data and data["platform_type"] == "pcie"):
+        mk_sdcard(target, data)
     mk_clean(target,data)
     return 
 
@@ -655,34 +831,61 @@ def create_utils(target, data):
     report_gen(target, data) 
     util_checks(target)
     device2xsa_gen(target)
+    deprecated_check(target, data)
     clean_util(target)
     readme_gen(target)
     return
+
+def create_cmakelist(target, data):
+    if "host_exe" in data["host"]:
+        target.write("set(EXECNAME \""+data["host"]["host_exe"]+"\")\n")
+    if "containers" in data:
+        for con in data["containers"]:
+            target.write("set(XBIN_DIR \""+con["name"]+".xclbin\")\n")
+    target.write("\n")
+    target.write("if (WIN32)\n")
+    target.write("  set(OpenCL_INCLUDE_DIR ${OCL_ROOT}/include)\n")
+    target.write("  find_library(OpenCL_LIBRARY\n")
+    target.write("    NAMES OpenCL\n")
+    target.write("    HINTS \"${OCL_ROOT}/lib\")\n")
+    target.write("\n")
+    target.write("  include_directories(${OpenCL_INCLUDE_DIR})\n")
+    target.write("else()\n")
+    target.write("  find_package(OpenCL)\n")
+    target.write("endif(WIN32)\n")
+    target.write("\n")
+    target.write("include_directories(${XILINX_XRT}/include ${XILINX_XRT}/ext/include ../src ../../../common/includes/xcl2)\n")
+    target.write("\n")
+    target.write("add_executable(${EXECNAME} ../../../common/includes/xcl2/xcl2.cpp ../src/host.cpp)\n")
+    target.write("\n")
+    target.write("target_link_libraries(${EXECNAME} PRIVATE ${OpenCL_LIBRARY})\n")
+    target.write("\n")
+    target.write("install(TARGETS ${EXECNAME}\n")
+    target.write("  RUNTIME DESTINATION ${INSTALL_DIR}/${EXECNAME})\n")
+
 
 def create_config(data):
     if "containers" in data:
         for con in data["containers"]:
             if "accelerators" in con:
+                config_file = 0
                 for acc in con["accelerators"]:
-                    if "compute_units" in acc or "num_compute_units" in acc:
-                        config_file = 0	
-                        for dirs,subdirs,files in os.walk("."):
-                            if con["name"]+".ini" in files:
-                                config_file = 1
-                        if config_file == 1:	
-                            target = open(con["name"]+".ini","a")
-                        else:	
-                            print("Creating "+con["name"]+".ini file for %s" %data["name"])
-                            target = open(con["name"]+".ini","w")
-                            config_file = 1
-                            target.write("[connectivity]\n")
+                    if ("compute_units" in acc or "num_compute_units" in acc) and config_file == 0:
+                        print ("Creating "+con["name"]+".ini file for %s" %data["name"])
+                        target = open(con["name"] + ".ini","w")
+                        target.write("[connectivity]\n")
+                        config_file = 1
                     if "compute_units" in acc:
-                        for com in acc["compute_units"]:
+                        for i in range(len(acc["compute_units"])):
+                            com = acc["compute_units"][i]
                             if "arguments" in com:
                                 for arg in com["arguments"]:
-                                    target.write("sp="+acc["name"]+"_"+str(acc["compute_units"].index(com)+1)+"."+arg["name"]+":"+arg["memory"]+"\n")
+                                    target.write("sp="+acc["name"]+"_"+str(i + 1)+"."+arg["name"])
+                                    if "memory" in arg:
+                                        target.write(":" + arg["memory"])
+                                    target.write("\n")
                             if "slr" in com:
-                                target.write("slr="+acc["name"]+"_"+str(acc["compute_units"].index(com)+1)+":"+com["slr"]+"\n")
+                                target.write("slr="+acc["name"]+"_"+str(i + 1)+":"+com["slr"]+"\n")
                     if "num_compute_units" in acc:
                                 target.write("nk="+acc["name"]+":"+acc["num_compute_units"]+"\n")
     return
@@ -692,8 +895,24 @@ desc = open(desc_file, 'r')
 data = json.load(desc)
 desc.close()
 
+file_name = "LICENSE.txt" # file to be searched
+cur_dir = os.getcwd()      # Dir from where search starts can be replaced with any path
+init_cur_dir = cur_dir
+
+while True:
+    file_list = os.listdir(cur_dir)
+    parent_dir = os.path.dirname(cur_dir)
+    if file_name in file_list:
+        break
+    else:
+        if cur_dir == parent_dir:         # if dir is root dir
+            print ("LICENSE.txt file not found")
+            break
+        else:
+            cur_dir = parent_dir
+
 if "match_ini" in data and data["match_ini"] == "false":
-    print("Error:: xrt.ini File Manually Edited:: Auto-file Generator Failed")
+    print("Info:: xrt.ini File Manually Edited:: Auto-file Generator Failed")
     err = False
 else:
     print("Generating xrt.ini file for %s" %data["name"])
@@ -702,22 +921,24 @@ else:
 
 if "containers" in data:
        	config_flag = 0
-        for con in data["containers"]:
-                for dirs,subdirs,files in os.walk("."):
-                        if con["name"]+".ini" in files:
-                                config_flag = 1
-        if not config_flag:
-                create_config(data)	
+        create_config(data)	
 
 if "match_makefile" in data and data["match_makefile"] == "false":
-    print("Error:: Makefile Manually Edited:: AutoMakefile Generator Failed")
+    print("Info:: Makefile Manually Edited:: AutoMakefile Generator Failed")
 else:
     print("Generating Auto-Makefile for %s" %data["name"])
     target = open("Makefile", "w")
     create_mk(target, data)
     print("Generating utils.mk file for %s" %data["name"])
-    target = open("utils.mk", "w+")
+    target = open("utils.mk", "w+")    
     create_utils(target, data)
+    temp_path = os.getcwd();
+    path = os.path.join(temp_path, "cmake_build")
+    folder_exist = os.path.isdir(path)
+    if folder_exist == False :
+        print("Generating CMakeLists.txt file for %s" %data["name"])
+        os.mkdir(path, 0o777)
+        target = open("cmake_build/CMakeLists.txt", "w+")
+        create_cmakelist(target, data)
 
 target.close
-
