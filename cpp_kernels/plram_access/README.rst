@@ -15,10 +15,13 @@ Platforms containing following strings in their names are not supported for this
 ::
 
    _u25_
+   u30
    zc
    vck
    u50
    samsung
+   _u2_
+   nodma
 
 DESIGN FILES
 ------------
@@ -39,3 +42,23 @@ Once the environment has been configured, the application can be executed by
 
    ./plram_access <mmult XCLBIN>
 
+DETAILS
+-------
+
+This example demonstrates how ``PLRAM`` feature of the Vitis memory
+subsystem and how they integrate with the Vitis design process.
+
+PLRAM is small shared memory which is built using the on-chip memory
+resources of the FPGA fabric. It is intended to provide a small amount
+of data storage that application kernels can share and access
+rapidly(lowest latency). PLRAM behaves just like the DDR memory
+resources managed by the Vitis memory subsystem.
+
+PLRAM can be assigned to a buffer by using ``--sp`` tags in the kernel
+linking stage.
+
+::
+
+   --sp mmult_1.a:PLRAM[0] --sp mmult_1.b:DDR[0] --sp mmult_1.c:PLRAM[1]
+
+For more comprehensive documentation, `click here <http://xilinx.github.io/Vitis_Accel_Examples>`__.

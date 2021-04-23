@@ -1,368 +1,401 @@
-/**********
-Copyright (c) 2020, Xilinx, Inc.
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation
-and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software
-without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-**********/
+/**
+* Copyright (C) 2020 Xilinx, Inc
+*
+* Licensed under the Apache License, Version 2.0 (the "License"). You may
+* not use this file except in compliance with the License. A copy of the
+* License is located at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+* License for the specific language governing permissions and limitations
+* under the License.
+*/
+#include "cmdlineparser.h"
 #include "xcl2.hpp"
-#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
+#include <string.h>
 #include <unistd.h>
+#include <vector>
 
 typedef int data_t;
-#define LENGTH 65536
-// Declaration of custom p2p APIs that binds to Xilinx p2p APIs.
 decltype(&xclGetMemObjectFd) xcl::P2P::getMemObjectFd = nullptr;
 decltype(&xclGetMemObjectFromFd) xcl::P2P::getMemObjectFromFd = nullptr;
 
-cl_program xcl_import_binary_file(cl_device_id device_id, cl_context context,
-                                  const char *xclbin_file_name);
-//==================================================================================================
+cl_program xcl_import_binary_file(cl_device_id device_id, cl_context context, const char* xclbin_file_name);
 
-void report_time(std::string label, cl_ulong totalTime, cl_ulong curTime) {
-  double total = LENGTH;
+int main(int argc, char* argv[]) {
+    // Command Line Parser
+    sda::utils::CmdLineParser parser;
 
-  total *= 1000000;     // convert us to s
-  total /= 1024 * 1024; // convert to MB
+    // Switches
+    //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
+    parser.addSwitch("--xclbin_file1", "-x1", "input binary file1 string", "");
+    parser.addSwitch("--xclbin_file2", "-x2", "input binary file2 string", "");
+    parser.addSwitch("--device0", "-d0", "first device id", "0");
+    parser.addSwitch("--device1", "-d1", "second device id", "1");
+    parser.parse(argc, argv);
 
-  std::cout << std::setw(8) << label << "\t" << std::fixed
-            << std::setprecision(2) << std::setw(8) << curTime << "ms\t"
-            << std::setw(8) << totalTime << "ms\t" << std::setw(8)
-            << float(curTime) * 100 / totalTime << "%\t" << std::setw(8)
-            << total / curTime << "MB/s\t" << std::endl;
-}
+    // Read settings
+    auto binaryFile1 = parser.value("xclbin_file1");
+    auto binaryFile2 = parser.value("xclbin_file2");
+    cl_uint dev_id1 = stoi(parser.value("device0"));
+    cl_uint dev_id2 = stoi(parser.value("device1"));
 
+    if (argc < 5) {
+        std::cout << "Options: <exe> <-x1> <first xclbin> <-x2> <second xclbin> "
+                     "<optional> <-d0> <device id0> <-d1> <device id1>"
+                  << std::endl;
+        return EXIT_FAILURE;
+    }
 
-int main(int argc, char *argv[]) {
-  double size = LENGTH;
-  data_t in1[LENGTH]; // original data set given to device
-  data_t in3[LENGTH];
-  for (int i = 0; i < LENGTH; i++) {
-    in1[i] = i;
-    in3[i] = i + 2;
-  }
+    int max_buffer = 32 * 1024 * 1024;
+    size_t min_buffer = 4 * 1024;
+    if (xcl::is_emulation()) {
+        max_buffer = 4 * 1024;
+    }
 
-  cl_platform_id platform_id;
-  cl_platform_id platforms[16] = {0};
-  cl_uint platform_count;
-  char platformName[256];
-  cl_int error;
+    std::vector<data_t, aligned_allocator<data_t> > in1(max_buffer);
+    std::vector<data_t, aligned_allocator<data_t> > out1(max_buffer);
+    for (int i = 0; i < max_buffer; i++) {
+        in1[i] = i;
+        out1[i] = 0;
+    }
 
-  clGetPlatformIDs(16, platforms, &platform_count);
+    cl_platform_id platform_id;
+    cl_platform_id platforms[16] = {0};
+    cl_uint platform_count;
+    char platformName[256];
+    cl_int error;
 
-  for (cl_uint i = 0; i < platform_count; i++) {
-     error = clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 256, platformName, 0);
-     if (error != CL_SUCCESS) {
-        exit(EXIT_FAILURE);
-     }
+    clGetPlatformIDs(16, platforms, &platform_count);
 
-     if(strcmp(platformName, "Xilinx")==0)
-     {
-        platform_id = platforms[i];
-     }
-  } 
-  cl_uint device_count;
-  clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ACCELERATOR, 0, NULL,
-                 &device_count);
-  std::cout << "Device count - " << device_count << std::endl;
+    for (cl_uint i = 0; i < platform_count; i++) {
+        error = clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 256, platformName, 0);
+        if (error != CL_SUCCESS) {
+            exit(EXIT_FAILURE);
+        }
 
-  if (device_count < 2) {
-    std::cout << "WARNING: This design does P2P transfer between two devices. "
-                 "Please run this "
-                 "design on machine with two devices.\n";
-    return 0;
-  }
+        if (strcmp(platformName, "Xilinx") == 0) {
+            platform_id = platforms[i];
+        }
+    }
+    cl_uint device_count;
+    clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ACCELERATOR, 0, nullptr, &device_count);
+    std::cout << "Device count - " << device_count << std::endl;
 
-  cl_device_id *device_id =
-      (cl_device_id *)malloc(sizeof(cl_device_id) * device_count);
-  clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ACCELERATOR, device_count,
-                 device_id, NULL);
+    if (device_count < 2) {
+        std::cout << "WARNING: This design does P2P transfer between two devices. "
+                     "Please run this "
+                     "design on machine with two devices.\n";
+        return 0;
+    }
 
-  cl_context context[device_count];
-  cl_command_queue queue[device_count];
-  cl_kernel krnl_dev0, krnl_dev1;
-  cl_program program[device_count];
-  int err;
+    cl_device_id* device_id = (cl_device_id*)malloc(sizeof(cl_device_id) * device_count);
+    clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ACCELERATOR, device_count, device_id, nullptr);
 
-  std::chrono::high_resolution_clock::time_point p2pStart;
-  std::chrono::high_resolution_clock::time_point p2pEnd;
+    cl_device_id device1, device2;
+    if (dev_id1 <= device_count)
+        device1 = device_id[dev_id1];
+    else
+        std::cout << "The device_id1 provided using -d0 flag is outside the range of "
+                     "available devices\n";
+    if (dev_id2 <= device_count)
+        device2 = device_id[dev_id2];
+    else
+        std::cout << "The device_id2 provided using -d1 flag is outside the range of "
+                     "available devices\n";
+    cl_context context[device_count];
+    cl_command_queue queue[device_count];
+    cl_kernel krnl_dev0, krnl_dev1;
+    cl_program program[device_count];
+    int err;
 
-  std::cout << "Initializing OpenCL objects" << std::endl;
-  for (uint8_t i = 0; i < device_count; i++) {
-    context[i] = clCreateContext(0, 1, &device_id[i], NULL, NULL, &err);
-    if (err != CL_SUCCESS)
-      std::cout << "clCreateContext call: Failed to create a compute context"
-                << err << std::endl;
-    queue[i] = clCreateCommandQueue(context[i], device_id[i],
-                                    CL_QUEUE_PROFILING_ENABLE, &err);
-    if (err != CL_SUCCESS)
-      std::cout << "clCreateCommandQueue call: Failed to create commandqueue"
-                << err << std::endl;
-  }
+    OCL_CHECK(err, context[0] = clCreateContext(0, 1, &device1, nullptr, nullptr, &err));
+    if (err != CL_SUCCESS) std::cout << "clCreateContext call: Failed to create a compute context" << err << std::endl;
+    OCL_CHECK(err, queue[0] = clCreateCommandQueue(context[0], device1, CL_QUEUE_PROFILING_ENABLE, &err));
+    if (err != CL_SUCCESS) std::cout << "clCreateCommandQueue call: Failed to create commandqueue" << err << std::endl;
 
-  int buffersize = sizeof(data_t) * LENGTH;
-  //------------------------------- Program
-  //-------------------------------------------
-  program[0] =
-      xcl_import_binary_file(device_id[0], context[0], argv[1]);
-  OCL_CHECK(err,
-            krnl_dev0 = clCreateKernel(program[0], "bandwidth", &err));
-  program[1] =
-      xcl_import_binary_file(device_id[1], context[1], argv[1]);
-  OCL_CHECK(err,
-            krnl_dev1 = clCreateKernel(program[1], "bandwidth", &err));
+    OCL_CHECK(err, context[1] = clCreateContext(0, 1, &device2, nullptr, nullptr, &err));
+    if (err != CL_SUCCESS) std::cout << "clCreateContext call: Failed to create a compute context" << err << std::endl;
+    OCL_CHECK(err, queue[1] = clCreateCommandQueue(context[1], device2, CL_QUEUE_PROFILING_ENABLE, &err));
+    if (err != CL_SUCCESS) std::cout << "clCreateCommandQueue call: Failed to create commandqueue" << err << std::endl;
 
-  xcl::P2P::init(platform_id);
-  // ---------------------------- Buffer-1
-  // -------------------------------------------
-  cl_mem input_a;
-  OCL_CHECK(err, input_a = clCreateBuffer(context[0], CL_MEM_READ_ONLY,
-                                          buffersize, nullptr, &err));
+    size_t vector_size_bytes = sizeof(data_t) * max_buffer;
+    //------------------------------- Program
+    //-------------------------------------------
+    program[0] = xcl_import_binary_file(device1, context[0], binaryFile1.c_str());
+    std::cout << "device1 program successful" << std::endl;
+    OCL_CHECK(err, krnl_dev0 = clCreateKernel(program[0], "bandwidth", &err));
+    program[1] = xcl_import_binary_file(device2, context[1], binaryFile2.c_str());
+    std::cout << "device2 program successful" << std::endl;
+    OCL_CHECK(err, krnl_dev1 = clCreateKernel(program[1], "bandwidth", &err));
 
-  cl_mem output_a;
-  cl_mem_ext_ptr_t output_ext = {XCL_MEM_EXT_P2P_BUFFER, NULL, 0};
-  OCL_CHECK(err, output_a = clCreateBuffer(context[0], CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX,
-                                          buffersize, &output_ext, &err));
+    xcl::P2P::init(platform_id);
 
-  // ---------------------------- Buffer-2
-  // -------------------------------------------
-  cl_mem output_b;
-  cl_mem_ext_ptr_t out_ext_b = {XCL_MEM_EXT_P2P_BUFFER, NULL, 0};
-  OCL_CHECK(err, output_b= clCreateBuffer(context[1], CL_MEM_READ_WRITE |
-                                                          CL_MEM_EXT_PTR_XILINX,
-                                          buffersize, &out_ext_b, &err));
+    // ---------------------------- Buffer-1
+    // -------------------------------------------
+    cl_mem pbo1;
+    cl_mem_ext_ptr_t pbo1_ext = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
+    OCL_CHECK(err, pbo1 = clCreateBuffer(context[0], CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX, vector_size_bytes,
+                                         &pbo1_ext, &err));
 
-  cl_mem input_b;
-  OCL_CHECK(err, input_b = clCreateBuffer(context[1], CL_MEM_READ_ONLY,
-                                          buffersize, nullptr, &err));
+    cl_mem rbo1;
+    OCL_CHECK(err, rbo1 = clCreateBuffer(context[0], CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, vector_size_bytes,
+                                         in1.data(), &err));
 
-  // ----------------------------Set Args
-  // -------------------------------------------
-  std::cout << "Set Args FPGA-1\n" << std::endl;
-  OCL_CHECK(err,
-            err = clSetKernelArg(krnl_dev0, 0, sizeof(cl_mem), &input_a));
-  OCL_CHECK(err,
-            err = clSetKernelArg(krnl_dev0, 1, sizeof(cl_mem), &output_a));
+    // ---------------------------- Buffer-2
+    // -------------------------------------------
+    cl_mem pbo2;
+    cl_mem_ext_ptr_t pbo2_ext = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
+    OCL_CHECK(err, pbo2 = clCreateBuffer(context[1], CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX, vector_size_bytes,
+                                         &pbo2_ext, &err));
 
-  std::cout << "Set Args FPGA-2\n" << std::endl;
-  OCL_CHECK(err,
-            err = clSetKernelArg(krnl_dev1, 0, sizeof(cl_mem), &input_b));
-  OCL_CHECK(err,
-            err = clSetKernelArg(krnl_dev1, 1, sizeof(cl_mem), &output_b));
-  // -----------------------------------------------------------------------
-  std::cout << "Write data to FPGA-1 \n" << std::endl;
-  OCL_CHECK(err, err = clEnqueueWriteBuffer(queue[0], input_a, CL_TRUE, 0,
-                                            sizeof(data_t) * LENGTH, in1, 0,
-                                            NULL, NULL));
+    cl_mem rbo2;
+    OCL_CHECK(err, rbo2 = clCreateBuffer(context[1], CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, vector_size_bytes,
+                                         in1.data(), &err));
 
-  std::cout << "Write data to FPGA-2 \n" << std::endl;
-  OCL_CHECK(err, err = clEnqueueWriteBuffer(queue[1], input_b, CL_TRUE, 0,
-                                            sizeof(data_t) * LENGTH, in3, 0,
-                                            NULL, NULL));
+    // ----------------------------Set Args
+    // -------------------------------------------
+    OCL_CHECK(err, err = clSetKernelArg(krnl_dev0, 0, sizeof(cl_mem), &pbo1));
+    OCL_CHECK(err, err = clSetKernelArg(krnl_dev0, 1, sizeof(cl_mem), &rbo1));
 
-  std::cout << "Launch FPGA-1\n" << std::endl;
-  OCL_CHECK(err, err = clEnqueueTask(queue[0], krnl_dev0, 0, NULL, NULL));
-  clFinish(queue[0]);
-  //------------------------- P2P
-  //-----------------------------------------------------------
-  p2pStart = std::chrono::high_resolution_clock::now();
-  std::cout << "Transferring from FPGA-1 to FPGA-2..." << std::endl;
-  int fd = -1;
-  OCL_CHECK(err,
-            err = xcl::P2P::getMemObjectFd(
-                output_b, &fd)); // Import p2p buffer to file descriptor (fd)
-  if (fd > 0) {
-    std::cout << "Import FD:" << fd << std::endl;
-  }
+    OCL_CHECK(err, err = clSetKernelArg(krnl_dev1, 0, sizeof(cl_mem), &pbo2));
+    OCL_CHECK(err, err = clSetKernelArg(krnl_dev1, 1, sizeof(cl_mem), &rbo2));
 
-  cl_mem exported_buf;
-  OCL_CHECK(err,
-            err = xcl::P2P::getMemObjectFromFd(context[0], device_id[0], 0, fd,
-                                               &exported_buf)); // Import
-  cl_event event;
-  OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[0], input_a, exported_buf, 0,
-                                           0, sizeof(data_t) * LENGTH, 0, NULL,
-                                           &event)); // transfer
-  clWaitForEvents(1, &event);
-  clReleaseMemObject(exported_buf);
-  // -----------------------------------------------------------------------
-  //------------------------- P2P
-  //-----------------------------------------------------------
-  std::cout << "Transferring from FPGA-2 to FPGA-1..." << std::endl;
-  int fd2 = -1;
-  OCL_CHECK(err,
-            err = xcl::P2P::getMemObjectFd(
-                output_a, &fd2)); // Import p2p buffer to file descriptor (fd)
-  if (fd2 > 0) {
-    std::cout << "Import FD:" << fd << std::endl;
-  }
+    // -----------------------------------------------------------------------
+    std::cout << "Write input data to device global memory" << std::endl;
+    OCL_CHECK(err, err = clEnqueueMigrateMemObjects(queue[0], 1, &rbo1, CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED, 0,
+                                                    nullptr, nullptr)); // Send data to the regular buffer of Device1
+    OCL_CHECK(err, err = clEnqueueMigrateMemObjects(queue[1], 1, &rbo2, CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED, 0,
+                                                    nullptr, nullptr)); // Send data to the regular buffer of Device2
 
-  cl_mem exported_buf2;
-  OCL_CHECK(err,
-            err = xcl::P2P::getMemObjectFromFd(context[1], device_id[1], 0, fd2,
-                                               &exported_buf2)); // Import
-  cl_event event2;
-  OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[1], input_b, exported_buf2, 0,
-                                           0, sizeof(data_t) * LENGTH, 0, NULL,
-                                           &event2)); // transfer
-  clWaitForEvents(1, &event2);
-  p2pEnd = std::chrono::high_resolution_clock::now();
-  clReleaseMemObject(exported_buf2);
-  // -----------------------------------------------------------------------
+    //------------------------- P2P
+    //-----------------------------------------------------------
+    int fd = -1;
+    OCL_CHECK(err, err = xcl::P2P::getMemObjectFd(pbo1, &fd)); // Export p2p buffer to file descriptor (fd)
 
-  cl_ulong p2pTime =
-      std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart)
-          .count();
-  double dmsduration = (double)p2pTime;
-  double dsduration = dmsduration / ((double)1000000000);
+    cl_mem pbo1_imported;
+    OCL_CHECK(err, err = xcl::P2P::getMemObjectFromFd(context[1], device2, 0, fd, &pbo1_imported)); // Import
 
-  double bpersec = (size / dsduration);
-  double gbpersec = (2*bpersec) / ((double)1024 * 1024);
+    int fd1 = -1;
+    OCL_CHECK(err, err = xcl::P2P::getMemObjectFd(pbo2, &fd1)); // Export p2p buffer to file descriptor (fd)
 
-  std::cout << "P2P Throughput = " << gbpersec << " (GB/sec) \n\n";
-  
-  clFinish(queue[0]);
-  clReleaseMemObject(input_a);
-  clReleaseMemObject(output_a);
+    cl_mem pbo2_imported;
+    OCL_CHECK(err, err = xcl::P2P::getMemObjectFromFd(context[0], device1, 0, fd1, &pbo2_imported)); // Import
 
-  clFinish(queue[1]);
-  clReleaseMemObject(output_b);
-  clReleaseMemObject(input_b);
-  clReleaseKernel(krnl_dev0);
-  clReleaseKernel(krnl_dev1);
-  // ------------------------------------------------------------------------------------------------------------------------
-  for (uint8_t i = 0; i < device_count; i++) {
-    clReleaseProgram(program[i]);
-    clReleaseContext(context[i]);
-    clReleaseCommandQueue(queue[i]);
-  }
-  p2pTime =
-      std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart)
-          .count();
+    size_t max_size = 1024 * 1024 * 1024; // 1GB size
+    std::cout << "Start P2P copy of various Buffer sizes \n";
+    for (size_t bufsize = min_buffer; bufsize <= vector_size_bytes; bufsize *= 2) {
+        std::string size_str = xcl::convert_size(bufsize);
+        int iter = max_size / bufsize;
+        if (xcl::is_emulation()) {
+            iter = 2; // Reducing iteration to run faster in emulation flow.
+        }
 
-  std::cout << "Test passed!\n";
-  return EXIT_SUCCESS;
+        //////////////////////// DMA Write by FPGA-1 //////////////////////////
+        std::chrono::high_resolution_clock::time_point p2pReadStart = std::chrono::high_resolution_clock::now();
+        for (int j = 0; j < iter; j++) {
+            OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[0], rbo1, pbo2_imported, 0, 0, bufsize, 0, nullptr,
+                                                     nullptr)); // FPGA1 DMA Write
+        }
+        clFinish(queue[0]);
+        std::chrono::high_resolution_clock::time_point p2pReadEnd = std::chrono::high_resolution_clock::now();
+        cl_ulong p2pReadTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pReadEnd - p2pReadStart).count();
+        ;
+        double dnsduration = (double)p2pReadTime;
+        double dsduration = dnsduration / ((double)1000000);
+        double gbpersec = ((iter * bufsize) / dsduration) / ((double)1024 * 1024 * 1024);
+        std::cout << "Buffer = " << size_str << " Iterations = " << iter
+                  << " Total Data Transfer = " << xcl::convert_size(max_size)
+                  << "\nDevice0 : DMA Write = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s";
+
+        //////////////////////// DMA Read by FPGA-1 //////////////////////////
+        p2pReadStart = std::chrono::high_resolution_clock::now();
+        for (int j = 0; j < iter; j++) {
+            OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[0], pbo2_imported, rbo1, 0, 0, bufsize, 0, nullptr,
+                                                     nullptr)); // FPGA1 DMA Read
+        }
+        clFinish(queue[0]);
+        p2pReadEnd = std::chrono::high_resolution_clock::now();
+        p2pReadTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pReadEnd - p2pReadStart).count();
+        ;
+        dnsduration = (double)p2pReadTime;
+        dsduration = dnsduration / ((double)1000000);
+        gbpersec = ((iter * bufsize) / dsduration) / ((double)1024 * 1024 * 1024);
+        std::cout << " DMA Read = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s";
+
+        //////////////////////// FPGA1 Read Write throughput /////////////////
+        std::chrono::high_resolution_clock::time_point p2pReadWriteStart = std::chrono::high_resolution_clock::now();
+        for (int j = 0; j < iter; j++) {
+            OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[0], rbo1, pbo2_imported, 0, 0, bufsize, 0, nullptr,
+                                                     nullptr)); // FPGA1 DMA Write
+            OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[0], pbo2_imported, rbo1, 0, 0, bufsize, 0, nullptr,
+                                                     nullptr)); // FPGA1 DMA Read
+        }
+        clFinish(queue[0]);
+
+        std::chrono::high_resolution_clock::time_point p2pReadWriteEnd = std::chrono::high_resolution_clock::now();
+        cl_ulong p2pReadWriteTime =
+            std::chrono::duration_cast<std::chrono::microseconds>(p2pReadWriteEnd - p2pReadWriteStart).count();
+        ;
+        dnsduration = (double)p2pReadWriteTime;
+        dsduration = dnsduration / ((double)1000000);
+        gbpersec = ((2 * iter * bufsize) / dsduration) / ((double)1024 * 1024 * 1024);
+        std::cout << " DMA Read Write = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
+        //////////////////////// DMA Write by FPGA-2 //////////////////////////
+        std::chrono::high_resolution_clock::time_point p2pWriteStart = std::chrono::high_resolution_clock::now();
+        for (int j = 0; j < iter; j++) {
+            OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[1], rbo2, pbo1_imported, 0, 0, bufsize, 0, nullptr,
+                                                     nullptr)); // FPGA2 DMA Write
+        }
+        clFinish(queue[1]);
+        std::chrono::high_resolution_clock::time_point p2pWriteEnd = std::chrono::high_resolution_clock::now();
+        cl_ulong p2pWriteTime =
+            std::chrono::duration_cast<std::chrono::microseconds>(p2pWriteEnd - p2pWriteStart).count();
+        ;
+        dnsduration = (double)p2pWriteTime;
+        dsduration = dnsduration / ((double)1000000);
+        gbpersec = ((iter * bufsize) / dsduration) / ((double)1024 * 1024 * 1024);
+        std::cout << "Device1 : DMA Write = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s";
+
+        //////////////////////// DMA Read by FPGA-2 //////////////////////////
+        p2pWriteStart = std::chrono::high_resolution_clock::now();
+        for (int j = 0; j < iter; j++) {
+            OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[1], pbo1_imported, rbo2, 0, 0, bufsize, 0, nullptr,
+                                                     nullptr)); // FPGA2 DMA Read
+        }
+        clFinish(queue[1]);
+        p2pWriteEnd = std::chrono::high_resolution_clock::now();
+        p2pWriteTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pWriteEnd - p2pWriteStart).count();
+        ;
+        dnsduration = (double)p2pWriteTime;
+        dsduration = dnsduration / ((double)1000000);
+        gbpersec = ((iter * bufsize) / dsduration) / ((double)1024 * 1024 * 1024);
+        std::cout << " DMA Read = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s";
+
+        //////////////////////// FPGA2 Read Write throughput /////////////////
+        p2pReadWriteStart = std::chrono::high_resolution_clock::now();
+        for (int j = 0; j < iter; j++) {
+            OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[1], rbo2, pbo1_imported, 0, 0, bufsize, 0, nullptr,
+                                                     nullptr)); // FPGA2 DMA Write
+            OCL_CHECK(err, err = clEnqueueCopyBuffer(queue[1], pbo1_imported, rbo2, 0, 0, bufsize, 0, nullptr,
+                                                     nullptr)); // FPGA2 DMA Read
+        }
+        clFinish(queue[1]);
+        p2pReadWriteEnd = std::chrono::high_resolution_clock::now();
+        p2pReadWriteTime =
+            std::chrono::duration_cast<std::chrono::microseconds>(p2pReadWriteEnd - p2pReadWriteStart).count();
+        ;
+        dnsduration = (double)p2pReadWriteTime;
+        dsduration = dnsduration / ((double)1000000);
+        gbpersec = ((2 * iter * bufsize) / dsduration) / ((double)1024 * 1024 * 1024);
+        std::cout << " DMA Read Write = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n\n";
+    }
+
+    clFinish(queue[0]);
+    clReleaseMemObject(pbo1);
+    clReleaseMemObject(rbo1);
+    clReleaseMemObject(pbo2_imported);
+
+    clFinish(queue[1]);
+    clReleaseMemObject(pbo2);
+    clReleaseMemObject(rbo2);
+    clReleaseMemObject(pbo1_imported);
+    clReleaseKernel(krnl_dev0);
+    clReleaseKernel(krnl_dev1);
+    // ------------------------------------------------------------------------------------------------------------------------
+    for (uint i = 0; i < device_count; i++) {
+        clReleaseProgram(program[i]);
+        clReleaseContext(context[i]);
+        clReleaseCommandQueue(queue[i]);
+    }
+
+    std::cout << "Test passed!\n";
+    return EXIT_SUCCESS;
 
 } // end of main
 
 // ============================ Helper Functions
 // =========================================
-static int load_file_to_memory(const char *filename, char **result);
-cl_program xcl_import_binary_file(cl_device_id device_id, cl_context context,
-                                  const char *xclbin_file_name) {
-  int err;
+static int load_file_to_memory(const char* filename, char** result);
+cl_program xcl_import_binary_file(cl_device_id device_id, cl_context context, const char* xclbin_file_name) {
+    int err;
 
-  std::cout << "INFO: Importing " << xclbin_file_name << std::endl;
+    if (access(xclbin_file_name, R_OK) != 0) {
+        return nullptr;
+        printf("ERROR: %s xclbin not available please build\n", xclbin_file_name);
+        exit(EXIT_FAILURE);
+    }
 
-  if (access(xclbin_file_name, R_OK) != 0) {
-    return NULL;
-    std::cerr << "ERROR: " << xclbin_file_name
-              << "xclbin not available please build\n";
-    exit(EXIT_FAILURE);
-  }
+    char* krnl_bin;
+    const size_t krnl_size = load_file_to_memory(xclbin_file_name, &krnl_bin);
 
-  char *krnl_bin;
-  const size_t krnl_size = load_file_to_memory(xclbin_file_name, &krnl_bin);
-  std::cout << "INFO: Loaded file\n";
+    cl_program program =
+        clCreateProgramWithBinary(context, 1, &device_id, &krnl_size, (const unsigned char**)&krnl_bin, nullptr, &err);
+    if ((!program) || (err != CL_SUCCESS)) {
+        printf("Error: Failed to create compute program from binary %d!\n", err);
+        printf("Test failed\n");
+        exit(EXIT_FAILURE);
+    }
 
-  cl_program program =
-      clCreateProgramWithBinary(context, 1, &device_id, &krnl_size,
-                                (const unsigned char **)&krnl_bin, NULL, &err);
-  if ((!program) || (err != CL_SUCCESS)) {
-    std::cout << "Error: Failed to create compute program from binary " << err
-              << std::endl;
-    std::cerr << "Test failed\n";
-    exit(EXIT_FAILURE);
-  }
+    err = clBuildProgram(program, 0, nullptr, nullptr, nullptr, nullptr);
+    if (err != CL_SUCCESS) {
+        size_t len;
+        char buffer[2048];
 
-  std::cout << "INFO: Created Binary\n";
+        clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+        printf("%s\n", buffer);
+        printf("Error: Failed to build program executable!\n");
+        exit(EXIT_FAILURE);
+    }
 
-  err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
-  if (err != CL_SUCCESS) {
-    size_t len;
-    char buffer[2048];
-
-    clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG,
-                          sizeof(buffer), buffer, &len);
-    std::cout << buffer << std::endl;
-    std::cerr << "Error: Failed to build program executable!\n";
-    exit(EXIT_FAILURE);
-  }
-
-  std::cout << "INFO: Built Program\n";
-
-  free(krnl_bin);
-
-  return program;
+    free(krnl_bin);
+    return program;
 }
 
-static void *smalloc(size_t size) {
-  void *ptr;
+static void* smalloc(size_t size);
+static int load_file_to_memory(const char* filename, char** result) {
+    unsigned int size;
 
-  ptr = malloc(size);
+    FILE* f = fopen(filename, "rb");
+    if (f == nullptr) {
+        *result = nullptr;
+        printf("Error: Could not read file %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
 
-  if (ptr == NULL) {
-    std::cerr << "Error: Cannot allocate memory\n";
-    exit(EXIT_FAILURE);
-  }
-   return ptr;
+    fseek(f, 0, SEEK_END);
+    size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    *result = (char*)smalloc(sizeof(char) * (size + 1));
+
+    if (size != fread(*result, sizeof(char), size, f)) {
+        free(*result);
+        printf("Error: read of kernel failed\n");
+        exit(EXIT_FAILURE);
+    }
+
+    fclose(f);
+    (*result)[size] = 0;
+
+    return size;
 }
-static int load_file_to_memory(const char *filename, char **result) {
-  unsigned int size;
 
-  FILE *f = fopen(filename, "rb");
-  if (f == NULL) {
-    *result = NULL;
-    std::cerr << "Error: Could not read file" << filename << std::endl;
-    exit(EXIT_FAILURE);
-  }
+static void* smalloc(size_t size) {
+    void* ptr;
 
-  fseek(f, 0, SEEK_END);
-  size = ftell(f);
-  fseek(f, 0, SEEK_SET);
+    ptr = malloc(size);
 
-  *result = (char *)smalloc(sizeof(char) * (size + 1));
-
-  if (size != fread(*result, sizeof(char), size, f)) {
-    free(*result);
-    std::cerr << "Error: read of kernel failed\n";
-    exit(EXIT_FAILURE);
-  }
-
-  fclose(f);
-  (*result)[size] = 0;
-
-  return size;
+    if (ptr == nullptr) {
+        printf("Error: Cannot allocate memory\n");
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
 }

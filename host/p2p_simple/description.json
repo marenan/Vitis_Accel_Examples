@@ -20,35 +20,22 @@
     "os": [
         "Linux"
     ],
-    "platform_whitelist": [
-        "samsung_u2"
-    ],
-    "ndevice": [
-        "zc",
-        "_u25_",
-        "u200",
-        "u250",
-        "u280",
-        "u50",
-        "vck",
-        "aws"
-    ],
     "platform_blacklist": [
         "zc",
         "_u25_",
-        "u200",
-        "u250",
-        "u280",
-        "u50",
+        "u30",
         "vck",
-        "aws"
+        "aws-vu9p-f1",
+        "2018",
+        "201910"
     ],
      "runtime": [
         "OpenCL"
-    ], 
+    ],
+   "config_make": "config.mk",
     "launch": [
         {
-            "cmd_args": "-x BUILD/adder.xclbin -i /dev/nvme0n1", 
+            "cmd_args": "-x BUILD/adder.xclbin", 
             "name": "generic launch for all flows"
         }
     ], 
@@ -77,7 +64,7 @@
                 }
             ], 
             "name": "adder",
-            "ldclflags": "--config PROJECT/adder.ini"
+            "ldclflags": "--config PROJECT/adder.cfg"
         }
     ],
     "contributors": [
@@ -88,6 +75,10 @@
     ],
     "testinfo": {
         "disable": false,
+        "profile": "no",
+        "features": [
+            "p2p"
+        ],
         "jobs": [
             {
                 "index": 0,

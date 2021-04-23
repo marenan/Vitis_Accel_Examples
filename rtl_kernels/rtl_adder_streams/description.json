@@ -7,6 +7,9 @@
     "key_concepts": [
         "RTL Kernel", 
         "Multiple RTL Kernels"
+    ],
+    "platform_blacklist": [
+        "nodma"
     ], 
     "targets": [
         "hw", 
@@ -48,7 +51,7 @@
                 }
             ], 
             "name": "adder",
-	    "ldclflags": "--config PROJECT/adder.ini"
+	    "ldclflags": "--config PROJECT/adder.cfg"
         }
     ], 
     "launch": [
@@ -59,7 +62,12 @@
     ], 
     "match_ini": "false", 
     "config_make": "config.mk", 
-    "output_files": "tmp_kernel_pack* packaged_kernel* _x* *.xo", 
+    "output_files": [
+        "tmp_kernel_pack*",
+        "packaged_kernel*",
+        "_x*",
+        "*.xo"
+    ], 
     "contributors": [
         {
             "url": "http://www.xilinx.com", 

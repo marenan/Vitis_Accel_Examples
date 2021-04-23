@@ -10,6 +10,9 @@
     ], 
     "key_concepts": [
         "burst access"
+    ],
+    "platform_blacklist": [
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -36,7 +39,7 @@
             "accelerators": [
                 {
                     "location": "src/vadd.cl", 
-                    "clflags": "--config PROJECT/vadd_vadd.ini", 
+                    "clflags": "--config PROJECT/vadd_vadd.cfg", 
                     "name": "vadd"
                 }
             ], 

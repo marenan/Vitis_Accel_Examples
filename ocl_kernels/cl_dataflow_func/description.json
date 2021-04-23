@@ -10,6 +10,9 @@
     ], 
     "key_concepts": [
         "Function/Task Level Parallelism"
+    ],
+    "platform_blacklist": [
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -34,7 +37,7 @@
             "accelerators": [
                 {
                     "location": "src/adder.cl", 
-                    "clflags": "--config PROJECT/adder_adder.ini", 
+                    "clflags": "--config PROJECT/adder_adder.cfg", 
                     "name": "adder"
                 }
             ], 
@@ -54,7 +57,6 @@
         }
     ],
     "testinfo": {
-        "profile": "no",
         "disable": false,
         "jobs": [
             {

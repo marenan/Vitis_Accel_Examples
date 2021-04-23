@@ -6,6 +6,9 @@
     "flow": "vitis",
     "key_concepts": [
         "OpenCL API"
+    ],
+    "platform_blacklist": [
+        "nodma"
     ], 
     "os": [
         "Linux"

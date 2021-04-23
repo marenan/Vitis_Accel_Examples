@@ -7,19 +7,15 @@
     "key_concepts": [
         "Multiple Compute Units"
     ], 
-    "ndevice": [
-        "_u25_",
-        "u50",
-        "vck",
-        "samsung",
-        "zc"
-    ], 
     "platform_blacklist": [
         "_u25_",
+        "u30",
         "u50",
         "vck",
         "samsung",
-        "zc"
+        "_u2_",
+        "zc",
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -27,6 +23,7 @@
     "runtime": [
         "OpenCL"
     ], 
+    "platform_type": "pcie",
     "host": {
         "host_exe": "multiple_cus_asymmetrical",
         "compiler": {
@@ -111,7 +108,7 @@
                     ], 
                     "location": "src/vadd.cpp", 
                     "name": "vadd", 
-                    "num_compute_units": "4:vadd_1.vadd_2.vadd_3.vadd_4"
+                    "num_compute_units": "4"
                 }
             ], 
             "name": "vadd"
@@ -131,6 +128,7 @@
     ],
     "testinfo": {
         "disable": false,
+        "profile": "no",
         "jobs": [
             {
                 "index": 0,

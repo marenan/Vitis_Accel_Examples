@@ -7,7 +7,10 @@
     "key_concepts": [
         "Critical Path handling", 
         "Improve Timing"
-    ], 
+    ],
+    "platform_blacklist": [
+        "nodma"
+     ],
     "os": [
         "Linux"
     ], 
@@ -32,6 +35,9 @@
             ]
         }
     }, 
+    "data": [
+        "REPO_DIR/common/data/xilinx_img.bmp"
+    ],
     "containers": [
         {
             "accelerators": [
@@ -46,11 +52,13 @@
     ], 
     "launch": [
         {
-            "cmd_args": "-x BUILD/apply_watermark_GOOD.xclbin -i PROJECT/data/input.bmp -c PROJECT/data/golden.bmp", 
+            "cmd_args": "-x BUILD/apply_watermark_GOOD.xclbin -i REPO_DIR/common/data/xilinx_img.bmp -c PROJECT/data/golden.bmp", 
             "name": "generic launch for all flows"
         }
     ], 
-    "output_files": "output.bmp",
+    "output_files": [
+        "output.bmp"
+    ],
     "contributors": [
         {
             "url": "http://www.xilinx.com", 

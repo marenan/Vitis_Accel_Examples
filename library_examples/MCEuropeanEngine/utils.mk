@@ -7,15 +7,15 @@ PROFILE := no
 
 #Generates profile summary report
 ifeq ($(PROFILE), yes)
-LDCLFLAGS += --profile_kernel data:all:all:all
+VPP_LDFLAGS += --profile_kernel data:all:all:all
 endif
 
 DEBUG := no
-B_TEMP = `$(ABS_COMMON_REPO)/common/utility/parse_platform_list.py $(DEVICE)`
+B_TEMP = `$(XF_PROJ_ROOT)/common/utility/parse_platform_list.py $(DEVICE)`
 
 #Generates debug summary report
 ifeq ($(DEBUG), yes)
-LDCLFLAGS += --dk list_ports
+VPP_LDFLAGS += --dk list_ports
 endif
 
 #Setting Platform Path
@@ -95,7 +95,7 @@ RMDIR = rm -rf
 
 ECHO:= @echo
 
-docs: README.md
+docs: README.rst
 
-README.md: description.json
-	$(ABS_COMMON_REPO)/common/utility/readme_gen/readme_gen.py description.json
+README.rst: description.json
+	$(XF_PROJ_ROOT)/common/utility/readme_gen/readme_gen.py description.json

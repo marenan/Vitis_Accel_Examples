@@ -15,19 +15,18 @@
     "os": [
         "Linux"
     ], 
-    "ndevice": [
-        "zc",
-        "vck",
-        "samsung"
-    ],	
     "platform_blacklist": [
         "zc",
         "vck",
+        "u200_gen3x16",
+        "u30",
+        "nodma",
         "samsung"
     ],	
     "runtime": [
         "OpenCL"
     ], 
+    "platform_type": "pcie",
     "host": {
         "host_exe": "kmeans",
         "compiler": {
@@ -55,7 +54,7 @@
                 }
             ], 
             "name": "krnl_kmeans",
-	    "ldclflags": "--config krnl_kmeans.ini -O3"
+	    "ldclflags": "--config krnl_kmeans.cfg -O3"
         }
     ],
     "launch": [

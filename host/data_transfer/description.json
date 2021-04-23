@@ -18,6 +18,9 @@
         "Read Buffers", 
         "Map Buffers", 
         "Async Memcpy"
+    ],
+    "platform_blacklist": [
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -61,7 +64,6 @@
         }
     ],
     "testinfo": {
-        "profile": "no",
         "disable": false,
         "jobs": [
             {

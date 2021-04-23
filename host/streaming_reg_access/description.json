@@ -14,23 +14,16 @@
     "platform_whitelist": [
         "u200_qdma"
     ],  
-    "ndevice": [
-        "u250",
-        "zc",
-        "vck",
-        "xdma",
-        "qep",	
-        "aws",
-        "samsung"
-    ],
     "platform_blacklist": [
+        "u30",
         "u250",
         "zc",
         "vck",
         "xdma",
         "qep",	
-        "aws",
-        "samsung"
+        "aws-vu9p-f1",
+        "samsung",
+        "nodma"
     ],
     "os": [
         "Linux"
@@ -38,6 +31,7 @@
     "runtime": [
         "OpenCL"
     ], 
+    "platform_type": "pcie",
     "host": {
         "host_exe": "streaming_reg_access",
         "compiler": {
@@ -54,8 +48,9 @@
             ]
         },
         "linker" : {
-            "options" : ["-luuid"
-                ]
+            "libraries" : [
+                "uuid"
+            ]
         }
     },
    "gui": false,

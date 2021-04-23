@@ -4,12 +4,9 @@
         "Bandwidth test of global to local memory."
     ], 
     "flow": "vitis",
-    "ndevice": [
-        "u50",
-        "vck",
-        "zc"
-    ], 
     "platform_blacklist": [
+        "_u2_",
+        "u30",
         "u50",
         "vck",
         "zc"
@@ -20,6 +17,7 @@
     "runtime": [
         "OpenCL"
     ], 
+    "platform_type": "pcie",
     "host": {
         "host_exe": "kernel_global_bandwidth",
         "compiler": {
@@ -35,7 +33,7 @@
     "v++": {
         "build_datafiles" : [            
             "PROJECT/hls_config.tcl",
-            "PROJECT/bandwidth.ini"
+            "PROJECT/bandwidth.cfg"
         ]
      },
     "containers": [
@@ -44,7 +42,7 @@
                 {
                     "name": "bandwidth", 
                     "location": "src/kernel.cpp",
-                    "clflags": "--config PROJECT/bandwidth.ini"
+                    "clflags": "--config PROJECT/bandwidth.cfg"
                 }
             ], 
             "name": "krnl_kernel_global"
@@ -64,6 +62,7 @@
         }
     ], 
     "testinfo": {
+        "profile": "no",
         "level_up": [
             {
                 "hw": "1"

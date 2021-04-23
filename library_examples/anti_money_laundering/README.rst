@@ -10,7 +10,16 @@ Platforms containing following strings in their names are not supported for this
 
 ::
 
+   _u2_
+   _u25_
+   u30
+   u50
+   u200
+   u280
+   u250
    zc
+   vck
+   nodma
 
 DESIGN FILES
 ------------
@@ -35,3 +44,4 @@ Once the environment has been configured, the application can be executed by
 
    ./test_aml  -xclbin <aml XCLBIN> -d ./data -c 0
 
+For more comprehensive documentation, `click here <http://xilinx.github.io/Vitis_Accel_Examples>`__.

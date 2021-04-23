@@ -1,37 +1,18 @@
-/**********
-Copyright (c) 2020, Xilinx, Inc.
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation
-and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software
-without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-**********/
+/**
+* Copyright (C) 2020 Xilinx, Inc
+*
+* Licensed under the Apache License, Version 2.0 (the "License"). You may
+* not use this file except in compliance with the License. A copy of the
+* License is located at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+* License for the specific language governing permissions and limitations
+* under the License.
+*/
 
 /*******************************************************************************
 Description:
@@ -83,41 +64,37 @@ HLS
 const int c_size = DATA_SIZE;
 
 // Read Data from Global Memory and write into Stream inStream
-static void read_input(unsigned int *in, hls::stream<unsigned int> &inStream,
-                       int size) {
+static void read_input(unsigned int* in, hls::stream<unsigned int>& inStream, int size) {
 // Auto-pipeline is going to apply pipeline to this loop
 mem_rd:
-  for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
 #pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
-    // Blocking write command to inStream
-    inStream << in[i];
-  }
+        // Blocking write command to inStream
+        inStream << in[i];
+    }
 }
 
 // Read Input data from inStream and write the result into outStream
-static void compute_add(hls::stream<unsigned int> &inStream,
-                        hls::stream<unsigned int> &outStream, int inc,
-                        int size) {
+static void compute_add(hls::stream<unsigned int>& inStream, hls::stream<unsigned int>& outStream, int inc, int size) {
 // Auto-pipeline is going to apply pipeline to this loop
 execute:
-  for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
 #pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
-    // Blocking read command from inStream and Blocking write command
-    // to outStream
-    outStream << (inStream.read() + inc);
-  }
+        // Blocking read command from inStream and Blocking write command
+        // to outStream
+        outStream << (inStream.read() + inc);
+    }
 }
 
 // Read result from outStream and write the result to Global Memory
-static void write_result(unsigned int *out,
-                         hls::stream<unsigned int> &outStream, int size) {
+static void write_result(unsigned int* out, hls::stream<unsigned int>& outStream, int size) {
 // Auto-pipeline is going to apply pipeline to this loop
 mem_wr:
-  for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
 #pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
-    // Blocking read command to inStream
-    out[i] = outStream.read();
-  }
+        // Blocking read command to inStream
+        out[i] = outStream.read();
+    }
 }
 
 extern "C" {
@@ -129,14 +106,13 @@ extern "C" {
         inc  (input)  --> Increment
         size (input)  --> Size of Vector in Integer
    */
-void adder(unsigned int *in, unsigned int *out, int inc, int size) {
-
-  // Adding names for the streams. It allows the name to be used in reporting.
-  // Vivado HLS
-  // automatically checks to ensure all elements from an input stream are read
-  // during sw emulation.
-  static hls::stream<unsigned int> inStream("input_stream");
-  static hls::stream<unsigned int> outStream("output_stream");
+void adder(unsigned int* in, unsigned int* out, int inc, int size) {
+    // Adding names for the streams. It allows the name to be used in reporting.
+    // Vivado HLS
+    // automatically checks to ensure all elements from an input stream are read
+    // during sw emulation.
+    static hls::stream<unsigned int> inStream("input_stream");
+    static hls::stream<unsigned int> outStream("output_stream");
 #pragma HLS STREAM variable = inStream depth = 32
 #pragma HLS STREAM variable = outStream depth = 32
 //  HLS STREAM variable=<name> depth=<size> pragma is used to define the Stream
@@ -153,9 +129,9 @@ void adder(unsigned int *in, unsigned int *out, int inc, int size) {
 //  producer to synchronize each other.
 
 #pragma HLS dataflow
-  // dataflow pragma instruct compiler to run following three APIs in parallel
-  read_input(in, inStream, size);
-  compute_add(inStream, outStream, inc, size);
-  write_result(out, outStream, size);
+    // dataflow pragma instruct compiler to run following three APIs in parallel
+    read_input(in, inStream, size);
+    compute_add(inStream, outStream, inc, size);
+    write_result(out, outStream, size);
 }
 }

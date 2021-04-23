@@ -12,6 +12,9 @@
         "Shift Register", 
         "FIR"
     ],
+    "platform_blacklist": [
+        "nodma"
+     ],    
     "os": [
         "Linux"
     ], 

@@ -16,23 +16,16 @@
     "platform_whitelist": [
         "u200_qdma"
     ],  
-    "ndevice": [
-        "u250",
-        "zc",
-        "vck",
-        "xdma",
-        "qep",	
-        "aws",
-        "samsung"
-    ], 
     "platform_blacklist": [
+        "u30",
         "u250",
         "zc",
         "vck",
         "xdma",
         "qep",	
-        "aws",
-        "samsung"
+        "aws-vu9p-f1",
+        "samsung",
+        "nodma"
     ], 
     "targets": [
         "hw", 
@@ -44,12 +37,11 @@
     "runtime": [
         "OpenCL"
     ], 
+    "platform_type": "pcie",
     "gui": false, 
     "host": {
         "linker": {
-            "options": [
-                "-pthread"
-            ]
+            "options": "-pthread"
         }, 
         "host_exe": "rtl_streaming_free_running",
         "compiler": {
@@ -80,7 +72,14 @@
         }
     ], 
     "config_make": "config.mk", 
-    "output_files": "tmp_kernel_pack* packaged_kernel* _x* *_ex project* pinfo.json",
+    "output_files": [
+        "tmp_kernel_pack*",
+        "packaged_kernel*",
+        "_x*",
+        "*_ex",
+        "project*",
+        "pinfo.json"
+    ],
     "contributors": [
         {
             "url": "http://www.xilinx.com", 

@@ -11,17 +11,14 @@
     "key_concepts": [
         "Multiple Banks"
     ], 
-    "ndevice": [
-        "u50",
-        "vck",
-        "zc", 
-        "samsung"
-    ], 
     "platform_blacklist": [
+        "u30",
         "u50",
         "vck",
-        "zc", 
-        "samsung"
+        "zc",
+        "samsung",
+        "_u2_",
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -29,6 +26,7 @@
     "runtime": [
         "OpenCL"
     ], 
+    "platform_type": "pcie",
     "host": {
         "host_exe": "cl_gmem_2banks",
         "compiler": {
@@ -47,10 +45,13 @@
             ]
         }
     }, 
+    "data": [
+        "REPO_DIR/common/data/xilinx_img.bmp"
+    ],
     "v++": {
         "build_datafiles" : [            
             "PROJECT/hls_config.tcl",
-            "PROJECT/bandwidth.ini"
+            "PROJECT/bandwidth.cfg"
         ]
      },
     "containers": [
@@ -73,7 +74,7 @@
                     ], 
                     "name": "apply_watermark", 
                     "location": "src/apply_watermark.cl",
-                    "clflags": "--config PROJECT/bandwidth.ini"
+                    "clflags": "--config PROJECT/bandwidth.cfg"
                 }
             ], 
             "name": "apply_watermark"
@@ -81,11 +82,13 @@
     ], 
     "launch": [
         {
-            "cmd_args": "-x BUILD/apply_watermark.xclbin -i PROJECT/data/input.bmp -c PROJECT/data/golden.bmp", 
+            "cmd_args": "-x BUILD/apply_watermark.xclbin -i REPO_DIR/common/data/xilinx_img.bmp -c PROJECT/data/golden.bmp", 
             "name": "generic launch for all flows"
         }
     ], 
-    "output_files": "output.bmp", 
+    "output_files": [
+        "output.bmp"
+    ], 
     "contributors": [
         {
             "url": "http://www.xilinx.com", 
@@ -94,6 +97,7 @@
     ],
     "testinfo": {
         "disable": false,
+        "profile": "no",
         "jobs": [
             {
                 "index": 0,

@@ -12,30 +12,22 @@
         "Create/Release Stream",
         "AXIS FIFO depth"
     ], 
-    "platform_whitelist": [
-        "u200_qdma"
-    ],  
-    "ndevice": [
-        "samsung",
-        "vck",
-        "zc"
-    ], 
     "platform_blacklist": [
         "samsung",
         "vck",
-        "zc"
+        "zc",
+        "nodma"
     ], 
     "os": [
         "Linux"
     ], 
     "runtime": [
         "OpenCL"
-    ], 
+    ],
+    "platform_type": "pcie", 
     "host": {
         "linker": {
-            "options": [
-                "-pthread"
-            ]
+            "options": "-pthread"
         }, 
         "host_exe": "streaming_k2k_mm",
         "compiler": {
@@ -61,7 +53,7 @@
                 }
             ], 
             "name": "krnl_stream_vadd_vmult",
-	    "ldclflags": "--config PROJECT/krnl_stream_vadd_vmult.ini" 
+	    "ldclflags": "--config PROJECT/krnl_stream_vadd_vmult.cfg" 
         }
     ],
     "launch": [

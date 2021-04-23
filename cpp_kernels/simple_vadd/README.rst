@@ -3,6 +3,15 @@ Vector Addition
 
 This is a simple example of vector addition.The purpose of this code is to introduce the user to application development in the Vitis tools.
 
+EXCLUDED PLATFORMS
+------------------
+
+Platforms containing following strings in their names are not supported for this example :
+
+::
+
+   nodma
+
 DESIGN FILES
 ------------
 
@@ -23,3 +32,4 @@ Once the environment has been configured, the application can be executed by
 
    ./simple_vadd <krnl_vadd XCLBIN>
 
+For more comprehensive documentation, `click here <http://xilinx.github.io/Vitis_Accel_Examples>`__.

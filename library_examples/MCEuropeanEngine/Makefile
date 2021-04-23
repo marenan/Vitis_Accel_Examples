@@ -1,3 +1,20 @@
+#
+# Copyright 2019-2020 Xilinx, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# makefile-generator v1.0.3
+#
+
 ############################## Help Section ##############################
 .PHONY: help
 
@@ -34,7 +51,7 @@ help::
 MK_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 COMMON_REPO ?= $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%library_examples/MCEuropeanEngine/*}')
 PWD = $(shell readlink -f .)
-ABS_COMMON_REPO = $(shell readlink -f $(COMMON_REPO))
+XF_PROJ_ROOT = $(shell readlink -f $(COMMON_REPO))
 
 TARGET := hw
 HOST_ARCH := x86
@@ -42,7 +59,10 @@ SYSROOT :=
 
 include ./utils.mk
 
+XSA := 
+ifneq ($(DEVICE), )
 XSA := $(call device2xsa, $(DEVICE))
+endif
 TEMP_DIR := ./_x.$(TARGET).$(XSA)
 BUILD_DIR := ./build_dir.$(TARGET).$(XSA)
 
@@ -54,10 +74,49 @@ LAUNCH_EMULATOR = $(PACKAGE_OUT)/launch_$(TARGET).sh
 RESULT_STRING = TEST PASSED
 
 VPP := v++
+CMD_ARGS =  -xclbin $(BUILD_DIR)/kernel_mc.xclbin
 
-include $(ABS_COMMON_REPO)/common/includes/opencl/opencl.mk
+include $(XF_PROJ_ROOT)/common/includes/opencl/opencl.mk
 CXXFLAGS += $(opencl_CXXFLAGS) -Wall -O0 -g -std=c++11
 LDFLAGS += $(opencl_LDFLAGS)
+
+ifeq ($(findstring _u25_, $(DEVICE)), _u25_)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring u30, $(DEVICE)), u30)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring u50, $(DEVICE)), u50)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring u200, $(DEVICE)), u200)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring u280, $(DEVICE)), u280)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring zc, $(DEVICE)), zc)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring qdma, $(DEVICE)), qdma)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring vck, $(DEVICE)), vck)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring samsung, $(DEVICE)), samsung)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring _u2_, $(DEVICE)), _u2_)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring nodma, $(DEVICE)), nodma)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+
+ifneq ($(findstring aws-vu9p-f1, $(DEVICE)), aws-vu9p-f1)
+$(warning [WARNING]: This example has not been tested for $(DEVICE). It may or may not work.)
+endif
 
 ############################## Setting up Host Variables ##############################
 #Include Required Host Source Files
@@ -75,20 +134,19 @@ endif
 ############################## Setting up Kernel Variables ##############################
 # Kernel compiler global settings
 VPP_FLAGS += 
-CLFLAGS += -t $(TARGET) --platform $(DEVICE) --save-temps 
+VPP_FLAGS += -t $(TARGET) --platform $(DEVICE) --save-temps 
 ifneq ($(TARGET), hw)
-	CLFLAGS += -g
+	VPP_FLAGS += -g
 endif
-CLFLAGS_kernel_mc +=   -D DPRAGMA
+VPP_FLAGS_kernel_mc +=   -D DPRAGMA
 
 
 # Kernel linker flags
-LDCLFLAGS += --config ./conn_vu9p.ini --kernel_frequency 300
+VPP_LDFLAGS += --config ./conn_vu9p.cfg --kernel_frequency 300
 
 # Adding config files to linker
-LDCLFLAGS_kernel_mc += --config kernel_mc.ini 
+VPP_LDFLAGS_kernel_mc += --config kernel_mc.cfg 
 EXECUTABLE = ./test.exe
-CMD_ARGS =  -xclbin $(BUILD_DIR)/kernel_mc.xclbin
 EMCONFIG_DIR = $(TEMP_DIR)
 
 VPP_FLAGS += -I./include
@@ -116,14 +174,14 @@ xclbin: build
 ############################## Setting Rules for Binary Containers (Building Kernels) ##############################
 $(TEMP_DIR)/kernel_mc.xo: ./src/kernel_mc.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k kernel_mc $(CLFLAGS) $(CLFLAGS_kernel_mc) --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	$(VPP) $(VPP_FLAGS) $(VPP_FLAGS_kernel_mc) -c -k kernel_mc --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(BUILD_DIR)/kernel_mc.xclbin: $(BINARY_CONTAINER_kernel_mc_OBJS)
 	mkdir -p $(BUILD_DIR)
 ifeq ($(HOST_ARCH), x86)
-	$(VPP) $(VPP_FLAGS) -l $(LDCLFLAGS) $(CLFLAGS) --temp_dir $(BUILD_DIR)  $(LDCLFLAGS_kernel_mc) -o'$(BUILD_DIR)/kernel_mc.link.xclbin' $(+)
+	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR)  $(VPP_LDFLAGS_kernel_mc) -o'$(BUILD_DIR)/kernel_mc.link.xclbin' $(+)
 	$(VPP) -p $(BUILD_DIR)/kernel_mc.link.xclbin -t $(TARGET) --platform $(DEVICE) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/kernel_mc.xclbin
 else
-	$(VPP) -l $(LDCLFLAGS) $(CLFLAGS) --temp_dir $(BUILD_DIR) -o'$(BUILD_DIR)/kernel_mc.xclbin' $(+)
+	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR) -o'$(BUILD_DIR)/kernel_mc.xclbin' $(+)
 endif
 
 ############################## Setting Rules for Host (Building Host Executable) ##############################
@@ -136,30 +194,20 @@ $(EMCONFIG_DIR)/emconfig.json:
 
 ############################## Setting Essential Checks and Running Rules ##############################
 run: all
-ifeq ($(findstring zc, $(DEVICE)), zc)
-$(error This example is not supported for $(DEVICE))
-endif
-ifeq ($(findstring qdma, $(DEVICE)), qdma)
-$(error This example is not supported for $(DEVICE))
-endif
-ifeq ($(findstring vck, $(DEVICE)), vck)
-$(error This example is not supported for $(DEVICE))
-endif
-
 ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))
 	$(CP) $(EMCONFIG_DIR)/emconfig.json .
-	XCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE)  -xclbin $(BUILD_DIR)/kernel_mc.xclbin
+	XCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE) $(CMD_ARGS)
 else
-	$(EXECUTABLE)  -xclbin $(BUILD_DIR)/kernel_mc.xclbin
+	$(EXECUTABLE) $(CMD_ARGS)
 endif
 
 
 .PHONY: test
 test: $(EXECUTABLE)
 ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))
-	XCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE)  -xclbin $(BUILD_DIR)/kernel_mc.xclbin
+	XCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE) $(CMD_ARGS)
 else
-	$(EXECUTABLE)  -xclbin $(BUILD_DIR)/kernel_mc.xclbin
+	$(EXECUTABLE) $(CMD_ARGS)
 endif
 
 

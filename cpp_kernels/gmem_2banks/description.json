@@ -1,17 +1,13 @@
 {
-    "ndevice": [
-        "zc", 
-        "zed",
-        "vck",
-        "u50",
-        "samsung"
-    ], 
     "platform_blacklist": [
         "zc", 
         "zed",
         "vck",
+        "u30",
         "u50",
-        "samsung"
+        "samsung",
+        "_u2_",
+        "nodma"
     ], 
     "description": [
         "This example of 2ddr is to demonstrate how to use multiple ddr and create buffers in each DDR."
@@ -25,11 +21,13 @@
     ], 
     "launch": [
         {
-            "cmd_args": "-x BUILD/apply_watermark.xclbin -i PROJECT/data/input.bmp -c PROJECT/data/golden.bmp", 
+            "cmd_args": "-x BUILD/apply_watermark.xclbin -i REPO_DIR/common/data/xilinx_img.bmp -c PROJECT/data/golden.bmp", 
             "name": "generic launch for all flows"
         }
     ], 
-    "output_files": "output.bmp", 
+    "output_files": [
+        "output.bmp"
+    ], 
     "host": {
         "host_exe": "gmem_2banks",
         "compiler": {
@@ -48,10 +46,13 @@
             ]
         }
     }, 
+    "data": [
+        "REPO_DIR/common/data/xilinx_img.bmp"
+    ],
     "v++": {
         "build_datafiles" : [            
             "PROJECT/hls_config.tcl",
-            "PROJECT/bandwidth.ini"
+            "PROJECT/bandwidth.cfg"
         ]
      },
     "key_concepts": [
@@ -64,7 +65,8 @@
     ], 
     "runtime": [
         "OpenCL"
-    ], 
+    ],
+    "platform_type": "pcie", 
     "os": [
         "Linux"
     ], 
@@ -88,7 +90,7 @@
                     ], 
                     "name": "apply_watermark", 
                     "location": "src/apply_watermark.cpp",
-                    "clflags": "--config PROJECT/bandwidth.ini"
+                    "clflags": "--config PROJECT/bandwidth.cfg"
                 }
             ], 
             "name": "apply_watermark"
@@ -96,6 +98,7 @@
     ], 
     "testinfo": {
         "disable": false,
+        "profile": "no",
         "jobs": [
             {
                 "index": 0,

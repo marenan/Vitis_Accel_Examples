@@ -16,6 +16,9 @@
         "Asynchronous Processing", 
         "Events", 
         "Asynchronous memcpy"
+    ],
+    "platform_blacklist": [
+        "nodma"
     ], 
     "os": [
         "Linux"

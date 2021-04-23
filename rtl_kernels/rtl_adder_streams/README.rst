@@ -5,6 +5,15 @@ This example shows an adder with streams using 3 RTL kernels.
 
 **KEY CONCEPTS:** RTL Kernel, Multiple RTL Kernels
 
+EXCLUDED PLATFORMS
+------------------
+
+Platforms containing following strings in their names are not supported for this example :
+
+::
+
+   nodma
+
 DESIGN FILES
 ------------
 
@@ -45,3 +54,20 @@ Once the environment has been configured, the application can be executed by
 
    ./rtl_adder_streams <adder XCLBIN>
 
+DETAILS
+-------
+
+This example demonstrates the use of RTL kernels for addition with
+stream interfaces. Kernel simply increments the input by 1 and returns
+the result.
+
+RTL kernels can be integrated to Vitis using ``RTL Kernel Wizard``.
+These kernels have the same software interface model as OpenCL and C/C++
+kernels. That is, they are seen by the host application as functions
+with a void return value, scalar arguments, and pointer arguments.
+
+The RTL Kernel Wizard automates some of the steps that need to be taken
+to ensure that the RTL IP is packaged into a kernel that can be
+integrated into a system in Vitis environment.
+
+For more comprehensive documentation, `click here <http://xilinx.github.io/Vitis_Accel_Examples>`__.

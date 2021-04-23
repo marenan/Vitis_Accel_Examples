@@ -14,10 +14,13 @@ Platforms containing following strings in their names are not supported for this
 
 ::
 
+   u30
    u50
    vck
    zc
    samsung
+   _u2_
+   nodma
 
 DESIGN FILES
 ------------
@@ -27,7 +30,6 @@ Application code is located in the src directory. Accelerator binary files will 
 ::
 
    data/golden.bmp
-   data/input.bmp
    src/apply_watermark.cl
    src/host.cpp
    
@@ -38,5 +40,28 @@ Once the environment has been configured, the application can be executed by
 
 ::
 
-   ./cl_gmem_2banks -x <apply_watermark XCLBIN> -i ./data/input.bmp -c ./data/golden.bmp
+   ./cl_gmem_2banks -x <apply_watermark XCLBIN> -i $(XF_PROJ_ROOT)/common/data/xilinx_img.bmp -c ./data/golden.bmp
 
+DETAILS
+-------
+
+This example demonstrates how buffers can be created in two different
+DDR(Global memory) banks.
+
+By default, all the memory interfaces from all the kernels are connected
+to a single global memory bank. As a result, only one memory interface
+at a time can transfer data to and from the memory bank, limiting the
+performance of the kernel. If the FPGA contains only one ``DDR`` (or
+global) memory bank, this is the only option. However, some FPGA devices
+contain multiple DDR memory banks. You can customize the connections
+among the kernel memory interfaces and the DDR memory bank of such a
+device by altering the default connection.
+
+Banks need to be specified using ``--sp`` tags in the kernel linking
+stage along with the ``port name`` and ``kernel name``.
+
+::
+
+   --sp apply_watermark_1.input:DDR[0] --sp apply_watermark_1.output:DDR[1]
+
+For more comprehensive documentation, `click here <http://xilinx.github.io/Vitis_Accel_Examples>`__.

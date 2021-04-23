@@ -8,15 +8,11 @@
         "ap_ctrl_chain", 
         "PLRAM"
     ], 
-    "ndevice": [
-        "samsung",
-        "vck",
-        "zc"
-    ], 
     "platform_blacklist": [
         "samsung",
         "vck",
-        "zc"
+        "zc",
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -24,11 +20,10 @@
     "runtime": [
         "OpenCL"
     ], 
+    "platform_type": "pcie",
     "host": {
         "linker": {
-            "options": [
-                "-pthread"
-            ]
+            "options": "-pthread"
         }, 
         "host_exe": "kernel_chain",
         "compiler": {

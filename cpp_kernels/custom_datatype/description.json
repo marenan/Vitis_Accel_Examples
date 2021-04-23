@@ -11,6 +11,9 @@
     "key_concepts": [
         "Custom Datatype"
     ], 
+    "platform_blacklist": [
+        "nodma"
+     ],    
     "os": [
         "Linux"
     ], 
@@ -35,6 +38,9 @@
             ]
         }
     }, 
+    "data": [
+        "REPO_DIR/common/data/xilinx_logo.bmp"
+    ],
     "containers": [
         {
             "accelerators": [
@@ -48,11 +54,13 @@
     ], 
     "launch": [
         {
-            "cmd_args": "-x BUILD/rgb_to_hsv.xclbin -i PROJECT/data/input.bmp", 
+            "cmd_args": "-x BUILD/rgb_to_hsv.xclbin -i REPO_DIR/common/data/xilinx_logo.bmp", 
             "name": "generic launch for all flows"
         }
     ], 
-    "output_files": "output.bmp",
+    "output_files": [
+        "output.bmp"
+    ],
     "contributors": [
         {
             "url": "http://www.xilinx.com", 

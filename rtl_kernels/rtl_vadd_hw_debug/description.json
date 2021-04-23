@@ -10,11 +10,10 @@
     "targets": [
         "hw"
     ],
-   "ndevice": [
-      	"vck"
-    ], 
     "platform_blacklist": [
-      	"vck"
+        "flat",
+        "vck",
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -54,7 +53,10 @@
         }
     ], 
     "config_make": "config.mk", 
-    "output_files": "tmp_kernel_pack* packaged_kernel*", 
+    "output_files": [
+        "tmp_kernel_pack*",
+        "packaged_kernel*"
+    ], 
     "contributors": [
         {
             "url": "http://www.xilinx.com", 
@@ -68,7 +70,6 @@
         "[Debug Core setup in the RTL kernel design and host design modifications to allow setup of debug triggers prior to running the kernel](https://github.com/Xilinx/Vitis_Accel_Examples/wiki/rtl_kernel_debug)"
     ],
     "testinfo": {
-        "profile": "no",
         "disable": false,
         "jobs": [
             {

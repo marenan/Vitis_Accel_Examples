@@ -17,24 +17,15 @@
     "os": [
         "Linux"
     ],
-    "platform_whitelist": [
-        "samsung_u2"
-    ],
-    "ndevice": [
-        "zc",
-        "201910",
-        "2018",
-        "vck",
-        "aws",
-        "u50"
-    ],
     "platform_blacklist": [
+        "flat",
         "zc",
         "201910",
         "2018",
         "vck",
-        "aws",
-        "u50"
+        "aws-vu9p-f1",
+        "_u25_",
+        "u30"
     ],
      "runtime": [
         "OpenCL"
@@ -91,6 +82,10 @@
     ],
     "testinfo": {
         "disable": false,
+        "profile": "no",
+        "features": [
+            "p2p"
+        ],
         "jobs": [
             {
                 "index": 0,

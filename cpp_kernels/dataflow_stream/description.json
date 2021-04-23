@@ -10,7 +10,10 @@
     ], 
     "key_concepts": [
         "Task Level Parallelism"
-    ], 
+    ],
+    "platform_blacklist": [
+        "nodma"
+     ],    
     "os": [
         "Linux"
     ], 

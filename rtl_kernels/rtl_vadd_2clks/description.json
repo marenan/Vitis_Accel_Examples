@@ -10,6 +10,12 @@
     "key_concepts": [
         "RTL Kernel", 
         "Multiple Kernel Clocks"
+    ],
+    "platform_type": "pcie", 
+    "platform_blacklist": [
+        "zc",
+        "vck",
+        "nodma"
     ], 
     "targets": [
         "hw", 
@@ -43,7 +49,7 @@
                 }
             ], 
             "name": "vadd",
-	    "ldclflags": "--config PROJECT/vadd.ini"
+	    "ldclflags": "--config PROJECT/vadd.cfg"
         }
     ], 
     "launch": [
@@ -53,7 +59,10 @@
         }
     ], 
     "config_make": "config.mk", 
-    "output_files": "tmp_kernel_pack* packaged_kernel*",
+    "output_files": [
+        "tmp_kernel_pack*",
+        "packaged_kernel*"
+    ],
     "contributors": [
         {
             "url": "http://www.xilinx.com", 

@@ -6,11 +6,17 @@
     "flow": "vitis", 
     "platform_type": "pcie", 
     "platform_whitelist": [
-        "aws"
+        "aws-vu9p-f1"
     ], 
     "platform_blacklist": [
+        "_u2_",
+        "u25",
+        "u30",
+        "u50",
         "zc",
-        "vck"
+        "vck",
+        "nodma",
+        "u250"
     ], 
     "runtime": [
         "OpenCL"
@@ -35,9 +41,7 @@
                 "PROJECT/include/sw", 
                 "PROJECT/include/sw/xcl2"
             ], 
-            "options": [
-                "-O3 -Wall -Wno-unknown-pragmas -Wno-unused-label -Wno-uninitialized -Wno-unused-value"
-            ],
+            "options": "-O3 -Wall -Wno-unknown-pragmas -Wno-unused-label -Wno-uninitialized -Wno-unused-value",
             "symbols":[
             "BLAS_ddrWidth=16",
             "BLAS_numKernels=1",
@@ -86,7 +90,7 @@
     "containers": [
         {
             "name": "blas", 
-            "ldclflags": "--config PROJECT/opts.ini --kernel_frequency 200", 
+            "ldclflags": "--config PROJECT/opts.cfg --kernel_frequency 200", 
             "frequency": 200, 
             "accelerators": [
                 {

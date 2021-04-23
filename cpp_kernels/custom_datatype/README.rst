@@ -7,6 +7,15 @@ This is simple example of RGB to HSV conversion to demonstrate Custom DATA Type 
 
 **KEYWORDS:** struct, #pragma HLS LOOP_TRIPCOUNT
 
+EXCLUDED PLATFORMS
+------------------
+
+Platforms containing following strings in their names are not supported for this example :
+
+::
+
+   nodma
+
 DESIGN FILES
 ------------
 
@@ -14,7 +23,6 @@ Application code is located in the src directory. Accelerator binary files will 
 
 ::
 
-   data/input.bmp
    src/host.cpp
    src/rgb_to_hsv.cpp
    src/rgb_to_hsv.h
@@ -26,5 +34,46 @@ Once the environment has been configured, the application can be executed by
 
 ::
 
-   ./custom_datatype -x <rgb_to_hsv XCLBIN> -i ./data/input.bmp
+   ./custom_datatype -x <rgb_to_hsv XCLBIN> -i $(XF_PROJ_ROOT)/common/data/xilinx_logo.bmp
 
+DETAILS
+-------
+
+Kernel ports can have custom datatypes.It is recommended that custom
+datatype is a power of 2 and minimum 32 bits to allow ``burst transfer``
+thus using the AXI master bandwidth efficiently. Extra ``padding`` can
+be added in case not a multiple of 32 bits as shown below.
+
+.. code:: cpp
+
+   typedef struct RGBcolor_struct
+   {
+     unsigned char r;
+     unsigned char g;
+     unsigned char b;
+     unsigned char pad;
+   } RGBcolor;
+
+   typedef struct HSVcolor_struct
+   {
+     unsigned char h;
+     unsigned char s;
+     unsigned char v;
+     unsigned char pad;
+   }HSVcolor;
+
+Kernel in this example uses the above structures as datatypes for its
+input and output ports.
+
+::
+
+   void rgb_to_hsv(RGBcolor *in,  // Access global memory as RGBcolor struct-wise
+                   HSVcolor *out, // Access Global Memory as HSVcolor struct-wise
+                   int size) 
+
+Custom datatypes can be used to reduce the number of
+``kernel arguments`` thus reducing the number of interfaces between
+kernels and memory. It can also help to reduce execution time to set
+kernel arguments if number of kernel arguments is large.
+
+For more comprehensive documentation, `click here <http://xilinx.github.io/Vitis_Accel_Examples>`__.

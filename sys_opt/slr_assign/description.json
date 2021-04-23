@@ -10,17 +10,14 @@
     "key_concepts": [
         "SLR Assignments"
     ], 
-    "ndevice": [
-        "_u25_",
-        "zc",
-        "vck", 
-        "samsung"
-    ], 
     "platform_blacklist": [
         "_u25_",
+        "u30",
         "zc",
-        "vck", 
-        "samsung"
+        "vck",
+        "samsung",
+        "_u2_",
+        "nodma"
     ],
     "os": [
         "Linux"
@@ -28,6 +25,7 @@
     "runtime": [
         "OpenCL"
     ], 
+    "platform_type": "pcie",
     "host": {
         "host_exe": "slr_assign",
         "compiler": {

@@ -14,13 +14,12 @@ for i in "${dir_list[@]}"
 do
     cd $i
     if grep -qr '"match_readme": "false"' .; then
-        echo "Ignoring README.md ::" $i
+        echo "Ignoring README.rst ::" $i
     else
         echo "Updating README for = $i"
-        rm README.md
+        rm README.rst
     fi
     make docs
-    git add README.md
     cd $BASEDIR
 done
 
@@ -32,7 +31,6 @@ do
     cd $i
     echo "Updating README for = $i"
     rm README.md
-    make docs
-    git add README.md
+    make docs -f summary.mk
     cd $BASEDIR
 done

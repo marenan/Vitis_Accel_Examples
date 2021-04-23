@@ -8,12 +8,18 @@
 	"config",
 	"set_clock_uncertainity",
 	"kernel_frequency",
-	"hls_pre_tcl"
+	"hls.pre_tcl"
     ], 
     "key_concepts": [
         "Using custom Tcl", 
         "Setting Kernel Clock Frequency",
 	"Clock Uncertainity"
+    ],
+    "platform_type": "pcie", 
+    "platform_blacklist": [
+        "zc",
+        "vck",
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -36,8 +42,8 @@
    "v++": {
         "build_datafiles" : [            
             "PROJECT/my_directives.tcl",
-            "PROJECT/vadd_vadd.ini",
-            "PROJECT/vadd.ini"
+            "PROJECT/vadd_vadd.cfg",
+            "PROJECT/vadd.cfg"
         ]
      }, 
     "containers": [
@@ -45,12 +51,12 @@
             "accelerators": [
                 {
                     "name": "vadd", 
-		    "clflags": "--config vadd_vadd.ini",
+		    "clflags": "--config vadd_vadd.cfg",
                     "location": "src/vadd.cpp"
                 }
             ], 
             "name": "vadd",
-            "ldclflags": "--config vadd.ini"
+            "ldclflags": "--config vadd.cfg"
         }
     ],
     "launch": [

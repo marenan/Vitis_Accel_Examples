@@ -8,7 +8,10 @@
         "memcpy", 
         "max_read_burst_length", 
         "max_write_burst_length"
-    ], 
+    ],
+    "platform_blacklist": [
+        "nodma"
+     ],    
     "key_concepts": [
         "burst access"
     ], 

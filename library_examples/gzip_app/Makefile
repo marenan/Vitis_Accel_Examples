@@ -1,3 +1,20 @@
+#
+# Copyright 2019-2020 Xilinx, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# makefile-generator v1.0.3
+#
+
 ############################## Help Section ##############################
 .PHONY: help
 
@@ -16,10 +33,6 @@ help::
 	$(ECHO)  "  make test DEVICE=<FPGA platform>"
 	$(ECHO)  "     Command to run the application. This is same as 'run' target but does not have any makefile dependency."
 	$(ECHO)  ""
-	$(ECHO) "  make sd_card TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>"
-	$(ECHO) "      Command to prepare sd_card files."
-	$(ECHO) "      By default, HOST_ARCH=x86. HOST_ARCH and EDGE_COMMON_SW is required for SoC shells"
-	$(ECHO) ""
 	$(ECHO) "  make run TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>"
 	$(ECHO) "      Command to run application in emulation."
 	$(ECHO) "      By default, HOST_ARCH=x86. HOST_ARCH and EDGE_COMMON_SW is required for SoC shells"
@@ -38,7 +51,7 @@ help::
 MK_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 COMMON_REPO ?= $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%library_examples/gzip_app/*}')
 PWD = $(shell readlink -f .)
-ABS_COMMON_REPO = $(shell readlink -f $(COMMON_REPO))
+XF_PROJ_ROOT = $(shell readlink -f $(COMMON_REPO))
 
 TARGET := hw
 HOST_ARCH := x86
@@ -46,7 +59,10 @@ SYSROOT :=
 
 include ./utils.mk
 
+XSA := 
+ifneq ($(DEVICE), )
 XSA := $(call device2xsa, $(DEVICE))
+endif
 TEMP_DIR := ./_x.$(TARGET).$(XSA)
 BUILD_DIR := ./build_dir.$(TARGET).$(XSA)
 
@@ -58,13 +74,39 @@ LAUNCH_EMULATOR = $(PACKAGE_OUT)/launch_$(TARGET).sh
 RESULT_STRING = TEST PASSED
 
 VPP := v++
-SDCARD := sd_card
+CMD_ARGS = -sx $(BUILD_DIR)/compress_decompress.xclbin -v ./sample.txt
 
-include $(ABS_COMMON_REPO)/common/includes/opencl/opencl.mk
+include $(XF_PROJ_ROOT)/common/includes/opencl/opencl.mk
 include ./config.mk
 
 CXXFLAGS += $(opencl_CXXFLAGS) -Wall -O0 -g -std=c++11
 LDFLAGS += $(opencl_LDFLAGS)
+
+ifeq ($(findstring _u2_, $(DEVICE)), _u2_)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring zc, $(DEVICE)), zc)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring vck, $(DEVICE)), vck)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring u30, $(DEVICE)), u30)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring u50, $(DEVICE)), u50)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring u280, $(DEVICE)), u280)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+ifeq ($(findstring nodma, $(DEVICE)), nodma)
+$(error [ERROR]: This example is not supported for $(DEVICE).)
+endif
+
+ifneq ($(findstring aws-vu9p-f1, $(DEVICE)), aws-vu9p-f1)
+$(warning [WARNING]: This example has not been tested for $(DEVICE). It may or may not work.)
+endif
 
 ############################## Setting up Host Variables ##############################
 #Include Required Host Source Files
@@ -81,24 +123,22 @@ endif
 ############################## Setting up Kernel Variables ##############################
 # Kernel compiler global settings
 VPP_FLAGS += 
-CLFLAGS += -t $(TARGET) --platform $(DEVICE) --save-temps 
+VPP_FLAGS += -t $(TARGET) --platform $(DEVICE) --save-temps 
 ifneq ($(TARGET), hw)
-	CLFLAGS += -g
+	VPP_FLAGS += -g
 endif
 
 CXXFLAGS += -DC_COMPUTE_UNIT=1 -DH_COMPUTE_UNIT=1 -DD_COMPUTE_UNIT=1 -DPARALLEL_BLOCK=8 -DGZIP_MODE -DOVERLAP_HOST_DEVICE
 
 # Kernel linker flags
-LDCLFLAGS += --kernel_frequency 250 --config ./opts.ini
+VPP_LDFLAGS += --kernel_frequency 250 --config ./opts.cfg
 
 EXECUTABLE = ./xil_gzip
-CMD_ARGS = -sx $(BUILD_DIR)/compress_decompress.xclbin -v ./sample.txt
 EMCONFIG_DIR = $(TEMP_DIR)
-EMU_DIR = $(SDCARD)/data/emulation
 
 VPP_FLAGS += -I./include
 
-VPP_FLAGS += --config ./advanced.ini
+VPP_FLAGS += --config ./advanced.cfg
 
 VPP_FLAGS += -DPARALLEL_BLOCK=8 -DMULTIPLE_BYTES=8 -DGZIP_MODE 
 
@@ -114,7 +154,7 @@ BINARY_CONTAINER_compress_decompress_OBJS += $(TEMP_DIR)/xilDecompressFull.xo
 CP = cp -rf
 
 .PHONY: all clean cleanall docs emconfig
-all: check-devices $(EXECUTABLE) $(BINARY_CONTAINERS) emconfig sd_card
+all: check-devices $(EXECUTABLE) $(BINARY_CONTAINERS) emconfig
 
 .PHONY: host
 host: $(EXECUTABLE)
@@ -128,26 +168,26 @@ xclbin: build
 ############################## Setting Rules for Binary Containers (Building Kernels) ##############################
 $(TEMP_DIR)/xilLz77Compress.xo: ./src/zlib_lz77_compress_mm.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k xilLz77Compress $(CLFLAGS) --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	$(VPP) $(VPP_FLAGS) -c -k xilLz77Compress --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(TEMP_DIR)/xilHuffmanKernel.xo: ./src/zlib_huffman_enc_mm.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k xilHuffmanKernel $(CLFLAGS) --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	$(VPP) $(VPP_FLAGS) -c -k xilHuffmanKernel --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(TEMP_DIR)/xilZlibDmReader.xo: ./src/zlib_dm_multibyte_rd.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k xilZlibDmReader $(CLFLAGS) --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	$(VPP) $(VPP_FLAGS) -c -k xilZlibDmReader --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(TEMP_DIR)/xilZlibDmWriter.xo: ./src/zlib_dm_multibyte_wr.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k xilZlibDmWriter $(CLFLAGS) --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	$(VPP) $(VPP_FLAGS) -c -k xilZlibDmWriter --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(TEMP_DIR)/xilDecompressFull.xo: ./src/zlib_parallelbyte_decompress_full.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k xilDecompressFull $(CLFLAGS) --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	$(VPP) $(VPP_FLAGS) -c -k xilDecompressFull --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(BUILD_DIR)/compress_decompress.xclbin: $(BINARY_CONTAINER_compress_decompress_OBJS)
 	mkdir -p $(BUILD_DIR)
 ifeq ($(HOST_ARCH), x86)
-	$(VPP) $(VPP_FLAGS) -l $(LDCLFLAGS) $(CLFLAGS) --temp_dir $(BUILD_DIR)  -o'$(BUILD_DIR)/compress_decompress.link.xclbin' $(+)
+	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR)  -o'$(BUILD_DIR)/compress_decompress.link.xclbin' $(+)
 	$(VPP) -p $(BUILD_DIR)/compress_decompress.link.xclbin -t $(TARGET) --platform $(DEVICE) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/compress_decompress.xclbin
 else
-	$(VPP) -l $(LDCLFLAGS) $(CLFLAGS) --temp_dir $(BUILD_DIR) -o'$(BUILD_DIR)/compress_decompress.xclbin' $(+)
+	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR) -o'$(BUILD_DIR)/compress_decompress.xclbin' $(+)
 endif
 
 ############################## Setting Rules for Host (Building Host Executable) ##############################
@@ -160,55 +200,22 @@ $(EMCONFIG_DIR)/emconfig.json:
 
 ############################## Setting Essential Checks and Running Rules ##############################
 run: all
-ifeq ($(findstring zc, $(DEVICE)), zc)
-$(error This example is not supported for $(DEVICE))
-endif
-ifeq ($(findstring vck, $(DEVICE)), vck)
-$(error This example is not supported for $(DEVICE))
-endif
-ifeq ($(findstring u50, $(DEVICE)), u50)
-$(error This example is not supported for $(DEVICE))
-endif
-ifeq ($(findstring u280, $(DEVICE)), u280)
-$(error This example is not supported for $(DEVICE))
-endif
-
 ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))
-ifeq ($(HOST_ARCH), x86)
 	$(CP) $(EMCONFIG_DIR)/emconfig.json .
-	XCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE) -sx $(BUILD_DIR)/compress_decompress.xclbin -v ./sample.txt
+	XCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE) $(CMD_ARGS)
 else
-	$(ABS_COMMON_REPO)/common/utility/run_emulation.pl "${LAUNCH_EMULATOR} | tee run_app.log" "${RUN_APP_SCRIPT} $(TARGET)" "${RESULT_STRING}" "7"
-endif
-else
-ifeq ($(HOST_ARCH), x86)
-	$(EXECUTABLE) -sx $(BUILD_DIR)/compress_decompress.xclbin -v ./sample.txt
-endif
+	$(EXECUTABLE) $(CMD_ARGS)
 endif
 
 
 .PHONY: test
 test: $(EXECUTABLE)
 ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))
-ifeq ($(HOST_ARCH), x86)
-	XCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE) -sx $(BUILD_DIR)/compress_decompress.xclbin -v ./sample.txt
+	XCL_EMULATION_MODE=$(TARGET) $(EXECUTABLE) $(CMD_ARGS)
 else
-	$(ABS_COMMON_REPO)/common/utility/run_emulation.pl "${LAUNCH_EMULATOR} | tee embedded_run.log" "${RUN_APP_SCRIPT} $(TARGET)" "${RESULT_STRING}" "7"
-endif
-else
-ifeq ($(HOST_ARCH), x86)
-	$(EXECUTABLE) -sx $(BUILD_DIR)/compress_decompress.xclbin -v ./sample.txt
-else
-	$(ECHO) "Please copy the content of sd_card folder and data to an SD Card and run on the board"
-endif
+	$(EXECUTABLE) $(CMD_ARGS)
 endif
 
-
-############################## Preparing sdcard ##############################
-sd_card: $(BINARY_CONTAINERS) $(EXECUTABLE) gen_run_app
-ifneq ($(HOST_ARCH), x86)
-	$(VPP) -p $(BUILD_DIR)/compress_decompress.xclbin -t $(TARGET) --platform $(DEVICE) --package.out_dir $(PACKAGE_OUT) --package.rootfs $(EDGE_COMMON_SW)/rootfs.ext4 --package.sd_file $(SD_IMAGE_FILE) --package.sd_file xrt.ini --package.sd_file $(RUN_APP_SCRIPT) --package.sd_file $(EXECUTABLE) --package.sd_file ./sample.txt -o compress_decompress.xclbin
-endif
 
 ############################## Cleaning Rules ##############################
 # Cleaning stuff
@@ -218,7 +225,7 @@ clean:
 	-$(RMDIR) src/*.ll *v++* .Xil emconfig.json dltmp* xmltmp* *.log *.jou *.wcfg *.wdb
 
 cleanall: clean
-	-$(RMDIR) build_dir* sd_card*
+	-$(RMDIR) build_dir*
 	-$(RMDIR) package.*
 	-$(RMDIR) _x* *xclbin.run_summary qemu-memory-_* emulation _vimage pl* start_simulation.sh *.xclbin
 	-$(RMDIR) ./sample.txt.* 

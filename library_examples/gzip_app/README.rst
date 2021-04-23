@@ -10,10 +10,13 @@ Platforms containing following strings in their names are not supported for this
 
 ::
 
+   _u2_
    zc
    vck
+   u30
    u50
    u280
+   nodma
 
 DESIGN FILES
 ------------
@@ -44,3 +47,4 @@ Once the environment has been configured, the application can be executed by
 
    ./xil_gzip -sx <compress_decompress XCLBIN> -v ./sample.txt
 
+For more comprehensive documentation, `click here <http://xilinx.github.io/Vitis_Accel_Examples>`__.

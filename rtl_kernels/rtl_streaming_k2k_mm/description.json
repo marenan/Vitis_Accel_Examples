@@ -5,17 +5,11 @@
     ], 
     "flow": "vitis",
     "config_make": "config.mk",
-    "platform_whitelist": [
-        "u200_qdma"
-    ],  
-   "ndevice": [
-      	"vck",
-        "zc706"
-       ], 
     "platform_blacklist": [
-      	"vck",
-        "zc706"
-       ], 
+        "vck",
+        "zc706",
+        "nodma"
+    ],
     "contributors": [
         {
             "url": "http://www.xilinx.com", 
@@ -31,9 +25,7 @@
     "gui": false, 
     "host": {
         "linker": {
-            "options": [
-                "-pthread"
-            ]
+            "options": "-pthread"
         }, 
         "host_exe": "rtl_streaming_k2k_mm",
         "compiler": {
@@ -85,7 +77,7 @@
                 } 
             ], 
             "name": "myadder",
-	    "ldclflags": "--config PROJECT/myadder.ini"
+	    "ldclflags": "--config PROJECT/myadder.cfg"
         }
     ], 
     "testinfo": {
@@ -106,5 +98,13 @@
         ],
         "category": "canary"
     },
-    "output_files": "tmp_kernel_pack* packaged_kernel* _x* *_ex project* pinfo.json *.xo"
+    "output_files": [
+        "tmp_kernel_pack*",
+        "packaged_kernel*",
+        "_x*",
+        "*_ex",
+        "project*", 
+        "pinfo.json",
+        "*.xo"
+    ]
 }

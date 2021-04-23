@@ -12,17 +12,13 @@
         "Handling Buffer sharing across multiple binaries", 
         "Multiple Kernel Binaries"
     ], 
-    "ndevice": [
-        "zcu102_base_20",
-        "zcu104_base_20",
-        "vck",
-        "zc7"
-     ],
     "platform_blacklist": [
+        "flat",
         "zcu102_base_20",
         "zcu104_base_20",
         "vck",
-        "zc7"
+        "zc7",
+        "nodma"
      ],
     "contributors": [
         {
@@ -80,6 +76,7 @@
             "name": "generic launch for all flows"
         }
     ], 
+    "config_make": "./config.mk",
     "contributors": [
         {
             "url": "http://www.xilinx.com", 

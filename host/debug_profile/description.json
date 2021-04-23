@@ -7,6 +7,9 @@
     "key_concepts": [
         "Use of Profile API", 
         "Waveform Dumping and loading"
+    ],
+    "platform_blacklist": [
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -16,6 +19,11 @@
     ], 
     "host": {
         "host_exe": "debug_profile",
+        "linker": {
+            "libraries": [
+                "xrt_coreutil"
+            ]
+        }, 
         "compiler": {
             "sources": [
                 "REPO_DIR/common/includes/xcl2/xcl2.cpp",
@@ -31,7 +39,7 @@
             "accelerators": [
                 {
                     "location": "src/vadd.cpp", 
-                    "clflags": "--config PROJECT/vadd_krnl_vadd.ini", 
+                    "clflags": "--config PROJECT/vadd_krnl_vadd.cfg", 
                     "name": "krnl_vadd"
                 }
             ], 
@@ -57,7 +65,6 @@
                 "hw_emu": "1"
             }
         ],
-        "profile": "no",
         "disable": false,
         "jobs": [
             {

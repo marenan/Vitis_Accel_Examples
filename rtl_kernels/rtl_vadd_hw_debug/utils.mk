@@ -3,12 +3,32 @@
 # be overridden through the make command line
 #+-------------------------------------------------------------------------------
 
+PROFILE := no
+
+#Generates profile summary report
+ifeq ($(PROFILE), yes)
+VPP_LDFLAGS += --profile_kernel data:all:all:all
+endif
+
 DEBUG := no
-B_TEMP = `$(ABS_COMMON_REPO)/common/utility/parse_platform_list.py $(DEVICE)`
+B_TEMP = `$(XF_PROJ_ROOT)/common/utility/parse_platform_list.py $(DEVICE)`
+PERL := 
+QEMU_IMODE := no
+LAUNCH_EMULATOR_CMD := 
+
+ifneq ($(PERL), /tools/xgs/perl/5.8.5/bin/perl)
+	QEMU_IMODE = yes
+endif
+
+ifeq ($(QEMU_IMODE), yes)
+	LAUNCH_EMULATOR_CMD = $(LAUNCH_EMULATOR)
+else
+	LAUNCH_EMULATOR_CMD = $(PERL) $(XF_PROJ_ROOT)/common/utility/run_emulation.pl "${LAUNCH_EMULATOR} | tee run_app.log" "${RUN_APP_SCRIPT} $(TARGET)" "${RESULT_STRING}" "7"
+endif
 
 #Generates debug summary report
 ifeq ($(DEBUG), yes)
-LDCLFLAGS += --dk list_ports
+VPP_LDFLAGS += --dk list_ports
 endif
 
 #Setting Platform Path
@@ -67,10 +87,10 @@ endif
 gen_run_app:
 ifneq ($(HOST_ARCH), x86)
 	rm -rf run_app.sh
-	$(ECHO) 'export LD_LIBRARY_PATH=/mnt:/tmp:$(LD_LIBRARY_PATH)' >> run_app.sh
+	$(ECHO) 'export LD_LIBRARY_PATH=/mnt:/tmp:$$LD_LIBRARY_PATH' >> run_app.sh
 	$(ECHO) 'export XILINX_XRT=/usr' >> run_app.sh
 ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))
-	$(ECHO) 'export XILINX_VITIS=/mnt' >> run_app.sh
+	$(ECHO) 'export XILINX_VITIS=$$PWD' >> run_app.sh
 	$(ECHO) 'export XCL_EMULATION_MODE=$(TARGET)' >> run_app.sh
 endif
 	$(ECHO) '$(EXECUTABLE) vadd.xclbin' >> run_app.sh
@@ -104,7 +124,7 @@ RMDIR = rm -rf
 
 ECHO:= @echo
 
-docs: README.md
+docs: README.rst
 
-README.md: description.json
-	$(ABS_COMMON_REPO)/common/utility/readme_gen/readme_gen.py description.json
+README.rst: description.json
+	$(XF_PROJ_ROOT)/common/utility/readme_gen/readme_gen.py description.json

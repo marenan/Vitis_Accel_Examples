@@ -11,6 +11,9 @@
         "Kernel Optimization", 
         "2port BRAM Utilization", 
         "two read/write Local Memory"
+    ],
+    "platform_blacklist": [
+        "nodma"
     ], 
     "os": [
         "Linux"
@@ -54,7 +57,6 @@
         }
     ],
     "testinfo": {
-        "profile": "no",
         "disable": false,
         "jobs": [
             {

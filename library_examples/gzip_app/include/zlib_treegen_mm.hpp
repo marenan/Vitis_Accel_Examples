@@ -1,19 +1,18 @@
-/*
- * (c) Copyright 2019 Xilinx, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+/**
+* Copyright (C) 2020 Xilinx, Inc
+*
+* Licensed under the Apache License, Version 2.0 (the "License"). You may
+* not use this file except in compliance with the License. A copy of the
+* License is located at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+* License for the specific language governing permissions and limitations
+* under the License.
+*/
 
 #ifndef _XFCOMPRESSION_ZLIB_TREEGEN_MM_HPP_
 #define _XFCOMPRESSION_ZLIB_TREEGEN_MM_HPP_
@@ -55,12 +54,18 @@ extern "C" {
                       hls::stream<ap_axiu<c_codeword_bits, 0, 0, 0> >
    &codeStream);
 */
-void xilTreegenKernel(uint32_t *dyn_ltree_freq, uint32_t *dyn_dtree_freq,
-                      uint32_t *dyn_bltree_freq, uint32_t *dyn_ltree_codes,
-                      uint32_t *dyn_dtree_codes, uint32_t *dyn_bltree_codes,
-                      uint32_t *dyn_ltree_blen, uint32_t *dyn_dtree_blen,
-                      uint32_t *dyn_bltree_blen, uint32_t *max_codes,
-                      uint32_t block_size_in_kb, uint32_t input_size,
+void xilTreegenKernel(uint32_t* dyn_ltree_freq,
+                      uint32_t* dyn_dtree_freq,
+                      uint32_t* dyn_bltree_freq,
+                      uint32_t* dyn_ltree_codes,
+                      uint32_t* dyn_dtree_codes,
+                      uint32_t* dyn_bltree_codes,
+                      uint32_t* dyn_ltree_blen,
+                      uint32_t* dyn_dtree_blen,
+                      uint32_t* dyn_bltree_blen,
+                      uint32_t* max_codes,
+                      uint32_t block_size_in_kb,
+                      uint32_t input_size,
                       uint32_t blocks_per_chunk);
 }
 

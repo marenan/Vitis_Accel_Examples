@@ -11,31 +11,26 @@
     ], 
     "key_concepts": [
         "High Bandwidth Memory", 
-        "Multiple HBM Banks",
+        "Multiple HBM Pseudo-channels",
         "Random Memory Access",
         "Linear Feedback Shift Register"
     ], 
-    "ndevice": [
-        "_u25_",
-        "u200", 
-        "zc",
-        "vck", 
-        "u250",
-        "aws",
-        "samsung"
-    ], 
     "platform_blacklist": [
         "_u25_",
+        "u30",
         "u200", 
         "zc",
         "vck", 
         "u250",
-        "aws",
-        "samsung"
+        "aws-vu9p-f1",
+        "samsung",
+        "_u2_",
+        "nodma"
     ],
     "runtime": [
         "OpenCL"
     ], 
+    "platform_type": "pcie",
     "host": {
         "host_exe": "hbm_bandwidth_pseudo_random",
         "compiler": {
